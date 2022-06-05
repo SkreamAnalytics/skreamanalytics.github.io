@@ -1,13 +1,17 @@
 
-.. skreamanalytics index file, created by `ablog start` on Sun Jun  5 08:46:05 2022.
+.. "" index file, created by `ablog start` on Mon Jun  6 08:27:55 2022.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Keri's Data Science Blog
-===========================================
+Welcome to Keri Sime's Blog!
+==============================
 
-.. postlist::
-   :format: {title} 
+Hello World! Find more about me here: :ref:`about`
+
+
+Here is a list of most recent posts:
+
+.. postlist:: 5
    :excerpts:
 
 

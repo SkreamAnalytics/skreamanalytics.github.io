@@ -248,7 +248,7 @@ variable importance works towards rectifying this problem but is still
 somewhat limited.
 
 References
-~~~~~~~~~~
+------------
 
 .. [1]
    L.Breiman and A.Cutler, Random Forests, University of California,
