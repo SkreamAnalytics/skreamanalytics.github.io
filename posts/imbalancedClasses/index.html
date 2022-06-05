@@ -1,0 +1,378 @@
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+    <title>Imbalanced Classes &#8212;   documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css" />
+    <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <link rel="author" title="About these documents" href="../../about/" />
+    <link rel="index" title="Index" href="../../genindex/" />
+    <link rel="search" title="Search" href="../../search/" /> 
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+  
+<style type="text/css">
+  ul.ablog-archive {
+    list-style: none;
+    overflow: auto;
+    margin-left: 0px;
+  }
+  ul.ablog-archive li {
+    float: left;
+    margin-right: 5px;
+    font-size: 80%;
+  }
+  ul.postlist a {
+    font-style: italic;
+  }
+  ul.postlist-style-disc {
+    list-style-type: disc;
+  }
+  ul.postlist-style-none {
+    list-style-type: none;
+  }
+  ul.postlist-style-circle {
+    list-style-type: circle;
+  }
+</style>
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+             <section id="imbalanced-classes">
+<h1>Imbalanced Classes<a class="headerlink" href="#imbalanced-classes" title="Permalink to this heading">¶</a></h1>
+<p>I am currently working on a binary classification problem whereby one of
+my classes contains more than 90% of the individuals. This is a common
+problem in fraud detection and customer churn prediction which makes
+both the modelling and the evaluation of the model more difficult.
+However, there are ways to overcome these problems. Here, I will present
+the two approaches that I have used.</p>
+<p>The first step is to create duplicate individuals for the smaller class
+to reduce the imbalance. This is a simple step to include in the
+modelling process and can dramatically improve the model quality. In my
+case, I have first created stratified samples with 70% of the
+individuals from the negative class and 70% of the individuals from the
+positive class for the training dataset. This ensures that there is a
+reasonable amount of individuals from the smaller positive class in the
+training data. Then I have created enough duplicates of the smaller
+positive class for the training data so that the classes are roughly
+balanced. The remaining 30% of the data are put into the test dataset
+without any duplication. I could have added duplicates to the test data
+as well but I am comparing different models for the same test and
+training datasets and I do not see the value in artificially inflating
+my quality measures without any real gain in information.</p>
+<p>Working in PySpark 2.0 and using the Zeppelin interpreter the code looks
+like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>#Create the stratified training dataset
+train = df.sampleBy(&quot;class&quot;, fractions={&quot;Negative&quot;: 0.7, &quot;Positive&quot;: 0.7}, seed=0)
+
+#Create the test dataset
+test=df.join(train, &quot;row_id&quot;, &quot;left_anti&quot;)
+
+#Create a variable containing the duplicates for the smaller class
+duplicates=train.filter(train.class == &#39;Positive&#39;)
+
+#Add the duplicates to the training dataset
+for index in range(10):
+    train=train.union(duplicates)
+</pre></div>
+</div>
+<p>The seed is set for reproducibility which I need for comparing different
+models on different days. Later in the modelling process, I use the
+CrossValidator function on the training samples to test different
+parameters. This reintroduces some randomness to the choice of training
+samples. The data are either transformed before or after the sampling
+into a format suitable for the algorithms. This is done using the likes
+of: StringIndexer, VectorAssembler and either VectorIndexer or
+OneHotEncoder, depending on the algorithm.</p>
+<p>Once a model has been fitted, we need to evaluate its quality. If 90% of
+the individuals are in the negative class and my model predicts that
+100% of the individuals are in this negative class then I will have a
+90% accuracy rate, yet the model is worthless. So accuracy is not always
+a good choice and we have to use other metrics. As a starting point, we
+can look at the confusion matrix which compares the actual classes with
+the classes predicted. This can give us an overall idea of the model
+quality. However, if we want to compare different models then using a
+confusion matrix quickly becomes a headache. Also, if we want to use an
+automatic tuning algorithm we are going to have to use a single
+statistic to compare the different models.</p>
+<p>Here is a confusion matrix followed by some commonly used metrics:</p>
+<a class="reference internal image-reference" href="../../_images/confusionMatrix1.PNG"><img alt="../../_images/confusionMatrix1.PNG" class="align-center" src="../../_images/confusionMatrix1.PNG" style="width: 400px;" /></a>
+<a class="reference internal image-reference" href="../../_images/accuracy.PNG"><img alt="../../_images/accuracy.PNG" class="align-center" src="../../_images/accuracy.PNG" style="width: 350px;" /></a>
+<dl class="simple">
+<dt>A less standard statistic, which is not an inbuilt function in</dt><dd><p>PySpark, is the kappa coefficient.</p>
+</dd>
+</dl>
+<a class="reference internal image-reference" href="../../_images/kappa.PNG"><img alt="../../_images/kappa.PNG" class="align-center" src="../../_images/kappa.PNG" style="width: 500px;" /></a>
+<p>Interpreting the measures:</p>
+<ul class="simple">
+<li><p>Accuracy – the global rate of correct classification.</p></li>
+<li><p>Precision – the rate of correct classification for the positive class. The precision will be 1 if the positive class is pure, which is to say if there are no negative individuals incorrectly classed as positive.</p></li>
+<li><p>Recall – the rate of true positives. The recall will be 1 if all of the positive class individuals are classed as positive.</p></li>
+<li><p>F1 score – a measure combining the precision and the recall. This measure does not have a direct interpretation. We want to maximize the f1 score by maximizing the precision and the recall simultaneously.</p></li>
+<li><p>Kappa - an indicator measuring the model performance against a model which assigns classes randomly. Landis &amp; Koch (1977) proposed magnitude guidelines but their scale is disputed. Given I am using it to compare different models, I am simply looking for a higher value.</p></li>
+</ul>
+<p>Given my context, I am most interested in identifying the individuals in
+the positive class and am not so worried if there are a large number of
+negative individuals incorrectly classed as positive. This means that a
+model is better if its recall is higher even if the precision is lower.
+Even though I calculate the accuracy, I only use it in conjunction with
+the kappa.</p>
+<p>I implemented a function printing all of these measures. The input of my
+function is a confusion matrix generated from the predictions on the
+test dataset. The strings had been transformed into zeros and ones by
+the data pre-processing stage but now I want to reintroduce my labels
+which I also do before inputting the predictions into my function
+<em>metrics</em>.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1">#Load the libraries needed</span>
+<span class="kn">from</span> <span class="nn">pyspark.ml.feature</span> <span class="kn">import</span> <span class="n">IndexToString</span>
+
+<span class="c1"># Get the predictions for the test dataset</span>
+<span class="n">predictions</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">test</span><span class="p">)</span>
+
+<span class="c1"># Correct the labels</span>
+<span class="n">idx_to_string</span> <span class="o">=</span> <span class="n">IndexToString</span><span class="p">(</span><span class="n">inputCol</span><span class="o">=</span><span class="s2">&quot;prediction&quot;</span><span class="p">,</span> <span class="n">outputCol</span><span class="o">=</span><span class="s2">&quot;pred&quot;</span><span class="p">,</span><span class="n">labels</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;Negative&#39;</span><span class="p">,</span><span class="s1">&#39;Positive&#39;</span><span class="p">])</span>
+<span class="n">predictions</span><span class="o">=</span><span class="n">idx_to_string</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">predictions</span><span class="p">)</span>
+
+<span class="c1"># Create the</span>
+<span class="n">m</span><span class="o">=</span><span class="n">predictions</span><span class="o">.</span><span class="n">crosstab</span><span class="p">(</span><span class="s2">&quot;class&quot;</span><span class="p">,</span><span class="s2">&quot;pred&quot;</span><span class="p">)</span>
+<span class="n">metrics</span><span class="p">(</span><span class="n">m</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Whereby <em>metrics</em> is my function defined as below:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Import the necessary libraries</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">pyspark.sql.functions</span> <span class="kn">import</span> <span class="o">*</span>
+
+<span class="c1"># Define the function</span>
+<span class="k">def</span> <span class="nf">metrics</span><span class="p">(</span><span class="n">m</span><span class="p">):</span>
+
+    <span class="c1"># Print the confusion matrix</span>
+    <span class="n">m</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+    <span class="c1"># Calculate the number of true positives</span>
+    <span class="n">f</span><span class="o">=</span><span class="n">m</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">when</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">class_pred</span><span class="o">==</span><span class="s1">&#39;Positive&#39;</span><span class="p">,</span><span class="n">m</span><span class="o">.</span><span class="n">Positive</span><span class="p">)</span><span class="o">.</span><span class="n">alias</span><span class="p">(</span><span class="s1">&#39;count&#39;</span><span class="p">))</span><span class="o">.</span><span class="n">toPandas</span><span class="p">()</span>
+    <span class="n">tp</span><span class="o">=</span><span class="n">f</span><span class="p">[</span><span class="s1">&#39;count&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+
+    <span class="c1"># Calculate the number of true negatives</span>
+    <span class="n">f</span><span class="o">=</span><span class="n">m</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">when</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">class_pred</span><span class="o">==</span><span class="s1">&#39;Negative&#39;</span><span class="p">,</span><span class="n">m</span><span class="o">.</span><span class="n">Negative</span><span class="p">)</span><span class="o">.</span><span class="n">alias</span><span class="p">(</span><span class="s1">&#39;count&#39;</span><span class="p">))</span><span class="o">.</span><span class="n">toPandas</span><span class="p">()</span>
+    <span class="n">tn</span> <span class="o">=</span><span class="n">f</span><span class="p">[</span><span class="s1">&#39;count&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+
+    <span class="c1"># Calculate the number of false positives</span>
+    <span class="n">f</span><span class="o">=</span><span class="n">m</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">when</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">class_pred</span><span class="o">==</span><span class="s1">&#39;Negative&#39;</span><span class="p">,</span><span class="n">m</span><span class="o">.</span><span class="n">Positive</span><span class="p">)</span><span class="o">.</span><span class="n">alias</span><span class="p">(</span><span class="s1">&#39;count&#39;</span><span class="p">))</span><span class="o">.</span><span class="n">toPandas</span><span class="p">()</span>
+    <span class="n">fp</span><span class="o">=</span><span class="n">f</span><span class="p">[</span><span class="s1">&#39;count&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+
+    <span class="c1"># Calculate the number of false negatives</span>
+    <span class="n">f</span><span class="o">=</span><span class="n">m</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">when</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">class_pred</span><span class="o">==</span><span class="s1">&#39;Positive&#39;</span><span class="p">,</span><span class="n">m</span><span class="o">.</span><span class="n">Negative</span><span class="p">)</span><span class="o">.</span><span class="n">alias</span><span class="p">(</span><span class="s1">&#39;count&#39;</span><span class="p">))</span><span class="o">.</span><span class="n">toPandas</span><span class="p">()</span>
+    <span class="n">fn</span> <span class="o">=</span><span class="n">f</span><span class="p">[</span><span class="s1">&#39;count&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+
+    <span class="c1"># Calculate the total number of individuals</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">tp</span><span class="o">+</span><span class="n">tn</span><span class="o">+</span><span class="n">fp</span><span class="o">+</span><span class="n">fn</span><span class="p">)</span>
+
+    <span class="c1"># Calculate the statitistics</span>
+    <span class="n">accuracy</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">tp</span><span class="o">+</span><span class="n">tn</span><span class="p">)</span><span class="o">/</span><span class="n">n</span>
+    <span class="n">recall</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">tp</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="n">tp</span> <span class="o">+</span> <span class="n">fn</span><span class="p">)</span>
+    <span class="n">precision</span><span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">tp</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="n">tp</span> <span class="o">+</span> <span class="n">fp</span><span class="p">)</span>
+    <span class="n">f1score</span><span class="o">=</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">precision</span><span class="o">*</span> <span class="n">recall</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">precision</span> <span class="o">+</span> <span class="n">recall</span><span class="p">)</span>
+
+    <span class="c1"># Calculate the kappa coefficient</span>
+    <span class="n">p_ob</span> <span class="o">=</span> <span class="n">accuracy</span> <span class="c1">#observed probability</span>
+    <span class="n">p_pos</span> <span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">tp</span><span class="o">+</span><span class="n">fp</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="n">tp</span><span class="o">+</span><span class="n">fn</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="n">n</span><span class="o">*</span><span class="n">n</span><span class="p">)</span>
+    <span class="n">p_neg</span> <span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">tn</span><span class="o">+</span><span class="n">fn</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="n">fp</span><span class="o">+</span><span class="n">tn</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="n">n</span><span class="o">*</span><span class="n">n</span><span class="p">)</span>
+    <span class="n">p_exp</span> <span class="o">=</span> <span class="n">p_pos</span> <span class="o">+</span> <span class="n">p_neg</span>  <span class="c1">#expected probability</span>
+    <span class="n">kappa</span><span class="o">=</span><span class="p">(</span><span class="n">p_ob</span> <span class="o">-</span> <span class="n">p_exp</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="n">p_exp</span><span class="p">)</span>
+
+    <span class="nb">print</span> <span class="s2">&quot;accuracy&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">accuracy</span><span class="p">,</span><span class="mi">2</span><span class="p">)</span>
+    <span class="nb">print</span> <span class="s2">&quot;kappa&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">kappa</span><span class="p">,</span><span class="mi">2</span><span class="p">),</span> <span class="s2">&quot;(expected accuracy &quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">p_exp</span><span class="p">,</span><span class="mi">2</span><span class="p">),</span> <span class="s2">&quot;)&quot;</span>
+    <span class="nb">print</span> <span class="s2">&quot;precision &quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">precision</span><span class="p">,</span><span class="mi">2</span><span class="p">)</span>
+    <span class="nb">print</span> <span class="s2">&quot;recall&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">recall</span><span class="p">,</span><span class="mi">2</span><span class="p">)</span>
+    <span class="nb">print</span> <span class="s2">&quot;f1score&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">f1score</span><span class="p">,</span><span class="mi">2</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Below is a fictional result to give you an idea of the output. Say we
+have 500 000 individuals in the negative class and 50 000 in the
+positive class of the test dataset. Imagine that the model has correctly
+classed 75% of the positives as positive and 75% of the negatives as
+negative. This gives us the following:</p>
+<a class="reference internal image-reference" href="../../_images/output.PNG"><img alt="../../_images/output.PNG" class="align-center" src="../../_images/output.PNG" style="width: 400px;" /></a>
+<p>So we can see that the accuracy is 75% as intended and that equally the
+recall is 75%. However the other measures of kappa, precision and f1
+score are not great due the large number of false positives. However, in
+my context this model could still be useful since I am particularly
+interested in maximizing the recall.</p>
+<p>If we want to automatically tune the in-built
+MulticlassClassificationEvaluator has metric choices including
+‘accuracy’ and ‘f1’, but not the kappa coefficient. To overcome this
+problem I adapted the CrossValidator function to allow custom metrics
+similar to what has been done here
+(<a class="reference external" href="https://stackoverflow.com/questions/44249089/custom-evaluator-during-cross-validation-spark">https://stackoverflow.com/questions/44249089/custom-evaluator-during-cross-validation-spark</a>).
+It was also necessary to adjust the <em>metrics</em> function to output the
+kappa coefficient rather than printing the various statistics.</p>
+<p>Just as a final reminder, I am programming in PySpark version 2.0 and
+using the <em>ML</em> library not <em>MLlib</em>. I tested the code in PySpark version
+2.1 and Python 3.0 in Jupyter notebook. So that it would work, I had to
+add brackets to the print statements and cast the predictions from
+double to integer before using IndexToString.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>Predictions = predictions.withColumn(‘prediction’, predictions.prediction.cast(“integer”))
+</pre></div>
+</div>
+</section>
+
+<div class="section">
+    
+
+<div class="section">
+  <span style="float: left">
+     Previous:
+    
+    <a href="../decisionTree/">
+       Decision Trees
+    </a>
+    
+  </span>
+  <span>&nbsp;</span>
+  <span style="float: right">
+     Next: 
+    <a href="../spatialDemo/">
+      Spatial Demo 
+    </a>
+    
+  </span>
+</div>
+  
+</div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../"></a></h1>
+
+
+
+
+
+
+
+
+  
+<h2>
+   
+  25 July 2018 
+</h2>
+
+<ul>
+   
+<li id="author">
+  <span
+    >Author:</span
+  >
+   
+  <a href="../../blog/author/keri-sime/">Keri Sime</a>  
+</li>
+     
+</ul>
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../about/">About Keri Sime</a></li>
+</ul>
+
+
+<h3>
+  <a href="../../blog/">Recent Posts</a>
+</h3>
+<ul>
+   
+  <li>
+    <a href="../spatialDemo/"
+      >25 April - Spatial Demo</a
+    >
+  </li>
+  
+  <li>
+    <a href="../decisionTree/"
+      >30 June - Decision Trees</a
+    >
+  </li>
+  
+  <li>
+    <a href="../logreg/"
+      >09 May - Logistic Regression</a
+    >
+  </li>
+  
+  <li>
+    <a href="../svm/"
+      >27 February - Support Vector Machines</a
+    >
+  </li>
+  
+</ul>
+
+<h3>
+  <a href="../../blog/archive/">Archives</a>
+</h3>
+<ul>
+   
+  <li>
+    <a href="../../blog/2022/">2022 (1)</a>
+  </li>
+    
+  <li>
+    <a href="../../blog/2018/">2018 (4)</a>
+  </li>
+   
+</ul>
+
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search/" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2022, Keri Sime.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 5.0.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../../_sources/posts/imbalancedClasses.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

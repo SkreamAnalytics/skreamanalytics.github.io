@@ -1,0 +1,290 @@
+.. post:: July 25, 2018
+   :author: Keri Sime
+
+Random Forests
+===============
+
+Theory
+------
+
+*Ensemble methods* have been developed to improve the performance of
+individual machine learning algorithms. These methods build multiple
+models, such as decision trees, and combine the decisions of the
+individual models by either averaging for a continuous output or through
+a majority vote for classification tasks. The idea is that by combining
+weak models of the same type, we can improve performance. The weak
+models must be sufficiently different to improve the overall performance
+of the ensemble. For example, *boosted tree* algorithms incrementally
+build an ensemble of decision trees by training new trees with an
+emphasis on the individuals that were previously misclassified. Another
+method, *Bootstrap aggregating* (*bagging*), builds a decision tree
+ensemble by repeatedly re-sampling training data with replacement this
+results in a *bagged forest*. Other types of ensemble methods based on
+decision trees include *random forests*, *purely random forests* and
+*rotation forests*.
+
+Random forests are a popular and easy to implement ensemble method for
+decision trees. They are a collection of un-pruned CART decision trees
+with a randomised selection of features at each split. These CART
+decision trees are also known as *CART-RF*. For more information on CART
+decision trees, see my earlier post on decision trees. Random forests
+use bagging to create the ensemble of learning subsets by sampling
+uniformly with replacement. Sampling with replacement means there could
+be duplicates in the sample. The name *bootstrap aggregating* comes from
+the sampling method which results in a so-called *bootstrap sample*.
+Furthermore, the decision trees for each learning subset are built on a
+randomised selection of features for each node or split. This is
+sometimes called *feature bagging*. This randomised selection of
+splitting variables is what differentiates random forests from a bagged
+forest.
+
+Leo Breiman was instrumental in the development of both the CART model
+and random forests. In 1966 he introduced *bagging predictors* before
+presenting random forests in 2001. Both of these method were unthinkable
+before recent advancements in computer technology which can handle the
+required intensive calculations.
+
+The random forest algorithm has many advantages over other machine
+learning algorithms. Most importantly it provides excellent levels of
+accuracy without overfitting and efficient performance for large data
+sets including large numbers of input variables (Breiman and
+Cutler) [1]_. In theory there is no need to preprocess the data since,
+for example, correlated variables do not bias the results and it can
+estimate missing data without loss of accuracy even when a large
+proportion of the data are missing. However, random forest
+implementations, for example in *SparkR*, do not always handle missing
+values. Another important advantage of random forests is that they
+generate an internal unbiased estimate of the generalisation error. The
+major downside of random forests is that they are less intuitive than
+decision trees due to their complexity; it is hard to explain how we
+have got a particular result.
+
+Key Concepts
+------------
+
+*Definition of a Random Forest* (Genuer et al.) [2]_
+
+We define a learning set :math:`L = \{(X_1,Y_1), (X_2,Y_2)...(X_n,Y_n)\}` containing :math:`n` independent and identically distributed 
+observations of a random vector :math:`(X,Y)`. Where :math:`X \in R^p`, :math:`R` denoting the real number space,  contains explanatory variables and :math:`Y \in \Upsilon` where
+:math:`\Upsilon` is a class label or numerical value. For classification problems, a classifier :math:`t`, is a map :math:`t: R^p\rightarrow\Upsilon` or for regression, a so-called regression function :math:`s`, gives
+:math:`Y=s(X) + \epsilon`. 
+
+Bootstrapping allows us to generate :math:`k` learning sets, :math:`L_k`, composed of
+:math:`m` samples, :math:`m \leqslant n`, obtained by uniform sampling with replacement from
+:math:`L`. In the case of a random forest, we have :math:`m = n`. As illustrated below, for each learning set a decision tree is created
+and the result of each tree is aggregated: :math:`h_B(x) = \frac{1}{K} \sum_{k=1}^K h_k(x)`.
+
+Below is the schema of a random forest (Genuer et al.) [3]_
+
+.. image:: ../_static/images/rf/forest.PNG
+  :width: 600
+  :align: center
+
+| *Out-of-bag-error*
+| Approximately 37% of the samples are not included in the construction of each tree,
+  these samples are called *Out-Of-Bag* (OOB) samples. For each OOB
+  sample, a prediction is made by the trees which are built without
+  them. A final overall prediction is made through majority voting or
+  averaging and the error rate is subsequently calculated. The OOB error
+  is the fraction of misclassified OOB samples. This method is
+  computationally much cheaper than using k-fold cross-validation.
+
+| *Variable Importance* (Howe) [4]_
+| Variable importance partly compensates for the lack of insight into
+  the influence that different variables have on a model. We can easily
+  see how a variable impacts a single decision tree but once we have an
+  ensemble of decision trees it is difficult to understand how a given
+  result is generated. Variable importance gives an indication of a
+  variable’s influence in relation to its impact on the model accuracy.
+  There are two different ways of measuring variable importance: *Gini
+  importance* or *mean decrease gini* and *permutation importance* or
+  *mean decrease accuracy*.
+
+Gini importance is the mean Gini gain due to a given variable for all of
+the trees. This can be used for variables of different types. However,
+it is biased towards continuous variables and categorical variables with
+many modalities.
+
+Permutation importance is the mean decrease in model performance after
+permuting the values in the out-of-bag samples for a given variable. The
+idea is that if we scramble all the values for variable :math:`X_m` and the accuracy of the prediction doesn’t change much, then the
+variable must not be very important. This measure is only biased when
+sub-sampling is used.
+
+Other Forest Models
+-------------------
+
+*Purely random forest* - this is a family of simplified models for which :math:`X=[0,1]^d`. This family of models is used to 
+asses theoretical values of random
+forests. The choice of partitions for each decision tree is independent
+of the particular learning set (Biau and Scornet) [5]_. For example, a
+*centred forest* uniformly selects a splitting feature amongst all the
+features and splits at the centre of the cell along the selected
+feature. The process continues until a tree is built to a predefined
+depth. The final label for a given node is calculated by averaging the
+:math:`Y_i` for the corresponding :math:`X_i` in the node.
+
+Below is a centred forest at level 2 (Biau and Scornet) [6]_
+
+.. image:: ../_static/images/rf/centredTree.PNG
+  :width: 600
+  :align: center
+
+A *uniform forest* is another type of purely random forest. The
+difference between a centred and uniform forest is the splitting point
+on the cell. A splitting feature is again uniformly selected but the
+split is performed uniformly at random on the side of the cell, along
+the selected feature.
+
+*Rotation forests* (Kuncheva and Rodrıguez) [7]_ - in a rotation forest
+an ensemble of independently trained tree classifiers is also generated
+but the trees are trained in a rotated feature space. Bootstrap learning
+sub-samples are first created then for each learning sub-sample the
+feature set is randomly split into subsets and a *Principal Component
+Analysis* (PCA) is run on each of these feature subsets. The principal
+components become the new feature space and the classifier is trained in
+this transformed feature space. Different splits of the set of features
+will lead to different transformed feature spaces which adds to the
+diversity already introduced by the bootstrap sampling to create the
+learning sets. Other methods can be used to transform the feature space
+than PCA such as *Non-parametric Discriminant Analysis*, *Random
+Projections* and *Sparse Random Projections*.
+
+*Deep neural decision forest* (Kontschieder et al.) [8]_ - this forest
+model is based on stochastic, differentiable decision trees which are
+compatible with back-propagation. This allows representation learning,
+from *deep convolutional networks*, to be applied. The salient
+difference between deep neural decision forests and regular random
+forests is that deep neural decision forests preform a global
+optimisation of split and terminal node parameters across all trees
+whereas random forests optimise the parameters for each individual tree.
+
+Code
+====
+
+The code presented here is quite simple and I haven’t included any data
+preparation code. I understand that the feature importance is the Gini
+importance rather than the permutation importance in both cases.
+
+*SparkR code:*
+
+::
+
+   # Create the model
+   modelRF <- spark.randomForest(train, status ~ sexe + age + region, type="classification",maxDepth = 5, maxBins = 100, numTrees = 5)
+
+   # Calculate the predictions for the testing dataset
+   predictionsRF <- predict(modelRF, test)
+
+   # Print the confusion matrix
+   crosstab(predictionsRF,'prediction', 'status')
+
+   # Extract the features
+   summary(modelRF)[3]  
+
+   # Extract the importance of these features
+   summary(modelRF)[4]$featureImportances
+
+   # Save the model
+   write.ml(modelRF, 'results/modelRF')
+
+   # Reimport the model
+   modelRF <- read.ml('results/modelRF')
+
+Note that the *maxBins* parameter is the maximum number of bins used for
+splitting features. It needs to be at least equal to the maximum number
+of modalities of a feature or variable in the training data. The
+implementation in SparkR is particularly simple. I also compared the
+performance of the random forest algorithm in SparkR against the
+implementation in PySpark and got better results in SparkR, so it could
+well be worth trying out the two algorithms for a given prediction
+problem.
+
+To implement a random forest in PySpark *ml* library, the data needs to
+be reformatted beforehand using *stringIndexor* and *vectorIndexor*. You
+can find this process in my blog post on decision trees.
+
+*PySpark Code:*
+
+::
+
+   #Import the libraries needed
+   from pyspark.ml import Pipeline
+   from pyspark.ml.classification import RandomForestClassifier
+   from pyspark.ml.feature import IndexToString
+   from pyspark.ml.evaluation import MulticlassClassificationEvaluator
+
+   # Create the trainer
+   rf = RandomForestClassifier(labelCol="label", featuresCol="features", maxDepth=5, numTrees=5, maxBins=50)
+
+   # Train the model
+   modelRF= rf.fit(train)
+
+   # Predict the status for the test dataset
+   predictionsRF = modelRF.transform(test)
+
+   # Replace the 0/1 predictions with the labels "Client", "FormerClient"
+   idx_to_string = IndexToString(inputCol="prediction", outputCol="prevision",labels=['Client','FormerClient'])
+   predictionsRF=idx_to_string.transform(predictionsRF)
+
+   # Print the confusion matrix
+   predictionsRF.crosstab("status","prevision")
+
+   # Extract the feature importances
+   modelRF.featureImportances
+
+   # Save the model
+   modelRF.save('results/modelRF')
+
+   # Reimport the model
+   from pyspark.ml.classification import RandomForestClassificationModel
+   modelRF=RandomForestClassificationModel.load('results/modelRF')
+
+Random forests are a popular and easy to implement machine learning
+model which can be adapted to a wide range of problems. The major
+disadvantage being its status as a black-box method. The availability of
+variable importance works towards rectifying this problem but is still
+somewhat limited.
+
+References
+~~~~~~~~~~
+
+.. [1]
+   L.Breiman and A.Cutler, Random Forests, University of California,
+   Berkeley(https://www.stat.berkeley.edu/~breiman/RandomForests/cc_home.htm)
+
+.. [2]
+   R.Geneur, J.M.Poggi et C.Tuleau, Random Forests: some methodological
+   insights, Université Paris Sud, Université Paris Descartes et
+   Université Nice Sophia-Antipolis
+   (https://samos.univ-paris1.fr/IMG/pdf_S1E1-Poggi.pdf)
+
+.. [3]
+   R.Geneur, J.M.Poggi et C.Tuleau, Random Forests: some methodological
+   insights, Université Paris Sud, Université Paris Descartes et
+   Université Nice Sophia-Antipolis
+   (https://samos.univ-paris1.fr/IMG/pdf_S1E1-Poggi.pdf)
+
+.. [4]
+   B.Howe, Practical Predictive Analytics: Models and Methods Online
+   Course 2018, Washington
+   University(https://www.coursera.org/learn/predictive-analytics/lecture/MACer/random-forests-variable-importance)
+
+.. [5]
+   G.Biau and E.Scornet, A Random Forest Guided Tour, Sorbonne
+   Universités (http://www.lsta.upmc.fr/BIAU/bs.pdf)
+
+.. [6]
+   G.Biau and E.Scornet, A Random Forest Guided Tour, Sorbonne
+   Universités (http://www.lsta.upmc.fr/BIAU/bs.pdf)
+
+.. [7]
+   L.I.Kuncheva and J.J.Rodrıguez, An Experimental Study on Rotation
+   Forest Ensembles 2007, University of Wales and Universidad de Burgos
+   respectively(https://doi.org/10.1007/978-3-540-72523-7_46)
+
+.. [8]
+   P.Kontschieder, M.Fiterau, A.Criminisi and S.Rota Bulo, Deep Neural
+   Decision Forests 2015,Microsoft Research, Carnegie Mellon University
+   and Fondazione Bruno
+   Kessler,(https://www.cv-foundation.org/openaccess/content_iccv_2015/papers/Kontschieder_Deep_Neural_Decision_ICCV_2015_paper.pdf)

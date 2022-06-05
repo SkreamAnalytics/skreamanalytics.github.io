@@ -1,0 +1,472 @@
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+    <title>Random Forests &#8212;   documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css" />
+    <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <link rel="author" title="About these documents" href="../../about/" />
+    <link rel="index" title="Index" href="../../genindex/" />
+    <link rel="search" title="Search" href="../../search/" /> 
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+  
+<style type="text/css">
+  ul.ablog-archive {
+    list-style: none;
+    overflow: auto;
+    margin-left: 0px;
+  }
+  ul.ablog-archive li {
+    float: left;
+    margin-right: 5px;
+    font-size: 80%;
+  }
+  ul.postlist a {
+    font-style: italic;
+  }
+  ul.postlist-style-disc {
+    list-style-type: disc;
+  }
+  ul.postlist-style-none {
+    list-style-type: none;
+  }
+  ul.postlist-style-circle {
+    list-style-type: circle;
+  }
+</style>
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+             <section id="random-forests">
+<h1>Random Forests<a class="headerlink" href="#random-forests" title="Permalink to this heading">¶</a></h1>
+<section id="theory">
+<h2>Theory<a class="headerlink" href="#theory" title="Permalink to this heading">¶</a></h2>
+<p><em>Ensemble methods</em> have been developed to improve the performance of
+individual machine learning algorithms. These methods build multiple
+models, such as decision trees, and combine the decisions of the
+individual models by either averaging for a continuous output or through
+a majority vote for classification tasks. The idea is that by combining
+weak models of the same type, we can improve performance. The weak
+models must be sufficiently different to improve the overall performance
+of the ensemble. For example, <em>boosted tree</em> algorithms incrementally
+build an ensemble of decision trees by training new trees with an
+emphasis on the individuals that were previously misclassified. Another
+method, <em>Bootstrap aggregating</em> (<em>bagging</em>), builds a decision tree
+ensemble by repeatedly re-sampling training data with replacement this
+results in a <em>bagged forest</em>. Other types of ensemble methods based on
+decision trees include <em>random forests</em>, <em>purely random forests</em> and
+<em>rotation forests</em>.</p>
+<p>Random forests are a popular and easy to implement ensemble method for
+decision trees. They are a collection of un-pruned CART decision trees
+with a randomised selection of features at each split. These CART
+decision trees are also known as <em>CART-RF</em>. For more information on CART
+decision trees, see my earlier post on decision trees. Random forests
+use bagging to create the ensemble of learning subsets by sampling
+uniformly with replacement. Sampling with replacement means there could
+be duplicates in the sample. The name <em>bootstrap aggregating</em> comes from
+the sampling method which results in a so-called <em>bootstrap sample</em>.
+Furthermore, the decision trees for each learning subset are built on a
+randomised selection of features for each node or split. This is
+sometimes called <em>feature bagging</em>. This randomised selection of
+splitting variables is what differentiates random forests from a bagged
+forest.</p>
+<p>Leo Breiman was instrumental in the development of both the CART model
+and random forests. In 1966 he introduced <em>bagging predictors</em> before
+presenting random forests in 2001. Both of these method were unthinkable
+before recent advancements in computer technology which can handle the
+required intensive calculations.</p>
+<p>The random forest algorithm has many advantages over other machine
+learning algorithms. Most importantly it provides excellent levels of
+accuracy without overfitting and efficient performance for large data
+sets including large numbers of input variables (Breiman and
+Cutler) <a class="footnote-reference brackets" href="#id9" id="id1" role="doc-noteref"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></a>. In theory there is no need to preprocess the data since,
+for example, correlated variables do not bias the results and it can
+estimate missing data without loss of accuracy even when a large
+proportion of the data are missing. However, random forest
+implementations, for example in <em>SparkR</em>, do not always handle missing
+values. Another important advantage of random forests is that they
+generate an internal unbiased estimate of the generalisation error. The
+major downside of random forests is that they are less intuitive than
+decision trees due to their complexity; it is hard to explain how we
+have got a particular result.</p>
+</section>
+<section id="key-concepts">
+<h2>Key Concepts<a class="headerlink" href="#key-concepts" title="Permalink to this heading">¶</a></h2>
+<p><em>Definition of a Random Forest</em> (Genuer et al.) <a class="footnote-reference brackets" href="#id10" id="id2" role="doc-noteref"><span class="fn-bracket">[</span>2<span class="fn-bracket">]</span></a></p>
+<p>We define a learning set <span class="math notranslate nohighlight">\(L = \{(X_1,Y_1), (X_2,Y_2)...(X_n,Y_n)\}\)</span> containing <span class="math notranslate nohighlight">\(n\)</span> independent and identically distributed
+observations of a random vector <span class="math notranslate nohighlight">\((X,Y)\)</span>. Where <span class="math notranslate nohighlight">\(X \in R^p\)</span>, <span class="math notranslate nohighlight">\(R\)</span> denoting the real number space,  contains explanatory variables and <span class="math notranslate nohighlight">\(Y \in \Upsilon\)</span> where
+<span class="math notranslate nohighlight">\(\Upsilon\)</span> is a class label or numerical value. For classification problems, a classifier <span class="math notranslate nohighlight">\(t\)</span>, is a map <span class="math notranslate nohighlight">\(t: R^p\rightarrow\Upsilon\)</span> or for regression, a so-called regression function <span class="math notranslate nohighlight">\(s\)</span>, gives
+<span class="math notranslate nohighlight">\(Y=s(X) + \epsilon\)</span>.</p>
+<p>Bootstrapping allows us to generate <span class="math notranslate nohighlight">\(k\)</span> learning sets, <span class="math notranslate nohighlight">\(L_k\)</span>, composed of
+<span class="math notranslate nohighlight">\(m\)</span> samples, <span class="math notranslate nohighlight">\(m \leqslant n\)</span>, obtained by uniform sampling with replacement from
+<span class="math notranslate nohighlight">\(L\)</span>. In the case of a random forest, we have <span class="math notranslate nohighlight">\(m = n\)</span>. As illustrated below, for each learning set a decision tree is created
+and the result of each tree is aggregated: <span class="math notranslate nohighlight">\(h_B(x) = \frac{1}{K} \sum_{k=1}^K h_k(x)\)</span>.</p>
+<p>Below is the schema of a random forest (Genuer et al.) <a class="footnote-reference brackets" href="#id11" id="id3" role="doc-noteref"><span class="fn-bracket">[</span>3<span class="fn-bracket">]</span></a></p>
+<a class="reference internal image-reference" href="../../_images/forest.PNG"><img alt="../../_images/forest.PNG" class="align-center" src="../../_images/forest.PNG" style="width: 600px;" /></a>
+<div class="line-block">
+<div class="line"><em>Out-of-bag-error</em></div>
+<div class="line">Approximately 37% of the samples are not included in the construction of each tree,
+these samples are called <em>Out-Of-Bag</em> (OOB) samples. For each OOB
+sample, a prediction is made by the trees which are built without
+them. A final overall prediction is made through majority voting or
+averaging and the error rate is subsequently calculated. The OOB error
+is the fraction of misclassified OOB samples. This method is
+computationally much cheaper than using k-fold cross-validation.</div>
+</div>
+<div class="line-block">
+<div class="line"><em>Variable Importance</em> (Howe) <a class="footnote-reference brackets" href="#id12" id="id4" role="doc-noteref"><span class="fn-bracket">[</span>4<span class="fn-bracket">]</span></a></div>
+<div class="line">Variable importance partly compensates for the lack of insight into
+the influence that different variables have on a model. We can easily
+see how a variable impacts a single decision tree but once we have an
+ensemble of decision trees it is difficult to understand how a given
+result is generated. Variable importance gives an indication of a
+variable’s influence in relation to its impact on the model accuracy.
+There are two different ways of measuring variable importance: <em>Gini
+importance</em> or <em>mean decrease gini</em> and <em>permutation importance</em> or
+<em>mean decrease accuracy</em>.</div>
+</div>
+<p>Gini importance is the mean Gini gain due to a given variable for all of
+the trees. This can be used for variables of different types. However,
+it is biased towards continuous variables and categorical variables with
+many modalities.</p>
+<p>Permutation importance is the mean decrease in model performance after
+permuting the values in the out-of-bag samples for a given variable. The
+idea is that if we scramble all the values for variable <span class="math notranslate nohighlight">\(X_m\)</span> and the accuracy of the prediction doesn’t change much, then the
+variable must not be very important. This measure is only biased when
+sub-sampling is used.</p>
+</section>
+<section id="other-forest-models">
+<h2>Other Forest Models<a class="headerlink" href="#other-forest-models" title="Permalink to this heading">¶</a></h2>
+<p><em>Purely random forest</em> - this is a family of simplified models for which <span class="math notranslate nohighlight">\(X=[0,1]^d\)</span>. This family of models is used to
+asses theoretical values of random
+forests. The choice of partitions for each decision tree is independent
+of the particular learning set (Biau and Scornet) <a class="footnote-reference brackets" href="#id13" id="id5" role="doc-noteref"><span class="fn-bracket">[</span>5<span class="fn-bracket">]</span></a>. For example, a
+<em>centred forest</em> uniformly selects a splitting feature amongst all the
+features and splits at the centre of the cell along the selected
+feature. The process continues until a tree is built to a predefined
+depth. The final label for a given node is calculated by averaging the
+<span class="math notranslate nohighlight">\(Y_i\)</span> for the corresponding <span class="math notranslate nohighlight">\(X_i\)</span> in the node.</p>
+<p>Below is a centred forest at level 2 (Biau and Scornet) <a class="footnote-reference brackets" href="#id14" id="id6" role="doc-noteref"><span class="fn-bracket">[</span>6<span class="fn-bracket">]</span></a></p>
+<a class="reference internal image-reference" href="../../_images/centredTree.PNG"><img alt="../../_images/centredTree.PNG" class="align-center" src="../../_images/centredTree.PNG" style="width: 600px;" /></a>
+<p>A <em>uniform forest</em> is another type of purely random forest. The
+difference between a centred and uniform forest is the splitting point
+on the cell. A splitting feature is again uniformly selected but the
+split is performed uniformly at random on the side of the cell, along
+the selected feature.</p>
+<p><em>Rotation forests</em> (Kuncheva and Rodrıguez) <a class="footnote-reference brackets" href="#id15" id="id7" role="doc-noteref"><span class="fn-bracket">[</span>7<span class="fn-bracket">]</span></a> - in a rotation forest
+an ensemble of independently trained tree classifiers is also generated
+but the trees are trained in a rotated feature space. Bootstrap learning
+sub-samples are first created then for each learning sub-sample the
+feature set is randomly split into subsets and a <em>Principal Component
+Analysis</em> (PCA) is run on each of these feature subsets. The principal
+components become the new feature space and the classifier is trained in
+this transformed feature space. Different splits of the set of features
+will lead to different transformed feature spaces which adds to the
+diversity already introduced by the bootstrap sampling to create the
+learning sets. Other methods can be used to transform the feature space
+than PCA such as <em>Non-parametric Discriminant Analysis</em>, <em>Random
+Projections</em> and <em>Sparse Random Projections</em>.</p>
+<p><em>Deep neural decision forest</em> (Kontschieder et al.) <a class="footnote-reference brackets" href="#id16" id="id8" role="doc-noteref"><span class="fn-bracket">[</span>8<span class="fn-bracket">]</span></a> - this forest
+model is based on stochastic, differentiable decision trees which are
+compatible with back-propagation. This allows representation learning,
+from <em>deep convolutional networks</em>, to be applied. The salient
+difference between deep neural decision forests and regular random
+forests is that deep neural decision forests preform a global
+optimisation of split and terminal node parameters across all trees
+whereas random forests optimise the parameters for each individual tree.</p>
+</section>
+</section>
+<section id="code">
+<h1>Code<a class="headerlink" href="#code" title="Permalink to this heading">¶</a></h1>
+<p>The code presented here is quite simple and I haven’t included any data
+preparation code. I understand that the feature importance is the Gini
+importance rather than the permutation importance in both cases.</p>
+<p><em>SparkR code:</em></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span># Create the model
+modelRF &lt;- spark.randomForest(train, status ~ sexe + age + region, type=&quot;classification&quot;,maxDepth = 5, maxBins = 100, numTrees = 5)
+
+# Calculate the predictions for the testing dataset
+predictionsRF &lt;- predict(modelRF, test)
+
+# Print the confusion matrix
+crosstab(predictionsRF,&#39;prediction&#39;, &#39;status&#39;)
+
+# Extract the features
+summary(modelRF)[3]
+
+# Extract the importance of these features
+summary(modelRF)[4]$featureImportances
+
+# Save the model
+write.ml(modelRF, &#39;results/modelRF&#39;)
+
+# Reimport the model
+modelRF &lt;- read.ml(&#39;results/modelRF&#39;)
+</pre></div>
+</div>
+<p>Note that the <em>maxBins</em> parameter is the maximum number of bins used for
+splitting features. It needs to be at least equal to the maximum number
+of modalities of a feature or variable in the training data. The
+implementation in SparkR is particularly simple. I also compared the
+performance of the random forest algorithm in SparkR against the
+implementation in PySpark and got better results in SparkR, so it could
+well be worth trying out the two algorithms for a given prediction
+problem.</p>
+<p>To implement a random forest in PySpark <em>ml</em> library, the data needs to
+be reformatted beforehand using <em>stringIndexor</em> and <em>vectorIndexor</em>. You
+can find this process in my blog post on decision trees.</p>
+<p><em>PySpark Code:</em></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1">#Import the libraries needed</span>
+<span class="kn">from</span> <span class="nn">pyspark.ml</span> <span class="kn">import</span> <span class="n">Pipeline</span>
+<span class="kn">from</span> <span class="nn">pyspark.ml.classification</span> <span class="kn">import</span> <span class="n">RandomForestClassifier</span>
+<span class="kn">from</span> <span class="nn">pyspark.ml.feature</span> <span class="kn">import</span> <span class="n">IndexToString</span>
+<span class="kn">from</span> <span class="nn">pyspark.ml.evaluation</span> <span class="kn">import</span> <span class="n">MulticlassClassificationEvaluator</span>
+
+<span class="c1"># Create the trainer</span>
+<span class="n">rf</span> <span class="o">=</span> <span class="n">RandomForestClassifier</span><span class="p">(</span><span class="n">labelCol</span><span class="o">=</span><span class="s2">&quot;label&quot;</span><span class="p">,</span> <span class="n">featuresCol</span><span class="o">=</span><span class="s2">&quot;features&quot;</span><span class="p">,</span> <span class="n">maxDepth</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">numTrees</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">maxBins</span><span class="o">=</span><span class="mi">50</span><span class="p">)</span>
+
+<span class="c1"># Train the model</span>
+<span class="n">modelRF</span><span class="o">=</span> <span class="n">rf</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">train</span><span class="p">)</span>
+
+<span class="c1"># Predict the status for the test dataset</span>
+<span class="n">predictionsRF</span> <span class="o">=</span> <span class="n">modelRF</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">test</span><span class="p">)</span>
+
+<span class="c1"># Replace the 0/1 predictions with the labels &quot;Client&quot;, &quot;FormerClient&quot;</span>
+<span class="n">idx_to_string</span> <span class="o">=</span> <span class="n">IndexToString</span><span class="p">(</span><span class="n">inputCol</span><span class="o">=</span><span class="s2">&quot;prediction&quot;</span><span class="p">,</span> <span class="n">outputCol</span><span class="o">=</span><span class="s2">&quot;prevision&quot;</span><span class="p">,</span><span class="n">labels</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;Client&#39;</span><span class="p">,</span><span class="s1">&#39;FormerClient&#39;</span><span class="p">])</span>
+<span class="n">predictionsRF</span><span class="o">=</span><span class="n">idx_to_string</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">predictionsRF</span><span class="p">)</span>
+
+<span class="c1"># Print the confusion matrix</span>
+<span class="n">predictionsRF</span><span class="o">.</span><span class="n">crosstab</span><span class="p">(</span><span class="s2">&quot;status&quot;</span><span class="p">,</span><span class="s2">&quot;prevision&quot;</span><span class="p">)</span>
+
+<span class="c1"># Extract the feature importances</span>
+<span class="n">modelRF</span><span class="o">.</span><span class="n">featureImportances</span>
+
+<span class="c1"># Save the model</span>
+<span class="n">modelRF</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s1">&#39;results/modelRF&#39;</span><span class="p">)</span>
+
+<span class="c1"># Reimport the model</span>
+<span class="kn">from</span> <span class="nn">pyspark.ml.classification</span> <span class="kn">import</span> <span class="n">RandomForestClassificationModel</span>
+<span class="n">modelRF</span><span class="o">=</span><span class="n">RandomForestClassificationModel</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s1">&#39;results/modelRF&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Random forests are a popular and easy to implement machine learning
+model which can be adapted to a wide range of problems. The major
+disadvantage being its status as a black-box method. The availability of
+variable importance works towards rectifying this problem but is still
+somewhat limited.</p>
+<aside class="footnote brackets" id="id9" role="note">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id1">1</a><span class="fn-bracket">]</span></span>
+<p>L.Breiman and A.Cutler, Random Forests, University of California,
+Berkeley(<a class="reference external" href="https://www.stat.berkeley.edu/~breiman/RandomForests/cc_home.htm">https://www.stat.berkeley.edu/~breiman/RandomForests/cc_home.htm</a>)</p>
+</aside>
+<aside class="footnote brackets" id="id10" role="note">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id2">2</a><span class="fn-bracket">]</span></span>
+<p>R.Geneur, J.M.Poggi et C.Tuleau, Random Forests: some methodological
+insights, Université Paris Sud, Université Paris Descartes et
+Université Nice Sophia-Antipolis
+(<a class="reference external" href="https://samos.univ-paris1.fr/IMG/pdf_S1E1-Poggi.pdf">https://samos.univ-paris1.fr/IMG/pdf_S1E1-Poggi.pdf</a>)</p>
+</aside>
+<aside class="footnote brackets" id="id11" role="note">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id3">3</a><span class="fn-bracket">]</span></span>
+<p>R.Geneur, J.M.Poggi et C.Tuleau, Random Forests: some methodological
+insights, Université Paris Sud, Université Paris Descartes et
+Université Nice Sophia-Antipolis
+(<a class="reference external" href="https://samos.univ-paris1.fr/IMG/pdf_S1E1-Poggi.pdf">https://samos.univ-paris1.fr/IMG/pdf_S1E1-Poggi.pdf</a>)</p>
+</aside>
+<aside class="footnote brackets" id="id12" role="note">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id4">4</a><span class="fn-bracket">]</span></span>
+<p>B.Howe, Practical Predictive Analytics: Models and Methods Online
+Course 2018, Washington
+University(<a class="reference external" href="https://www.coursera.org/learn/predictive-analytics/lecture/MACer/random-forests-variable-importance">https://www.coursera.org/learn/predictive-analytics/lecture/MACer/random-forests-variable-importance</a>)</p>
+</aside>
+<aside class="footnote brackets" id="id13" role="note">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id5">5</a><span class="fn-bracket">]</span></span>
+<p>G.Biau and E.Scornet, A Random Forest Guided Tour, Sorbonne
+Universités (<a class="reference external" href="http://www.lsta.upmc.fr/BIAU/bs.pdf">http://www.lsta.upmc.fr/BIAU/bs.pdf</a>)</p>
+</aside>
+<aside class="footnote brackets" id="id14" role="note">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id6">6</a><span class="fn-bracket">]</span></span>
+<p>G.Biau and E.Scornet, A Random Forest Guided Tour, Sorbonne
+Universités (<a class="reference external" href="http://www.lsta.upmc.fr/BIAU/bs.pdf">http://www.lsta.upmc.fr/BIAU/bs.pdf</a>)</p>
+</aside>
+<aside class="footnote brackets" id="id15" role="note">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id7">7</a><span class="fn-bracket">]</span></span>
+<p>L.I.Kuncheva and J.J.Rodrıguez, An Experimental Study on Rotation
+Forest Ensembles 2007, University of Wales and Universidad de Burgos
+respectively(<a class="reference external" href="https://doi.org/10.1007/978-3-540-72523-7_46">https://doi.org/10.1007/978-3-540-72523-7_46</a>)</p>
+</aside>
+<aside class="footnote brackets" id="id16" role="note">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id8">8</a><span class="fn-bracket">]</span></span>
+<p>P.Kontschieder, M.Fiterau, A.Criminisi and S.Rota Bulo, Deep Neural
+Decision Forests 2015,Microsoft Research, Carnegie Mellon University
+and Fondazione Bruno
+Kessler,(<a class="reference external" href="https://www.cv-foundation.org/openaccess/content_iccv_2015/papers/Kontschieder_Deep_Neural_Decision_ICCV_2015_paper.pdf">https://www.cv-foundation.org/openaccess/content_iccv_2015/papers/Kontschieder_Deep_Neural_Decision_ICCV_2015_paper.pdf</a>)</p>
+</aside>
+</section>
+
+<div class="section">
+    
+
+<div class="section">
+  <span style="float: left">
+     Previous:
+    
+    <a href="../imbalancedClasses/">
+       Imbalanced Classes
+    </a>
+    
+  </span>
+  <span>&nbsp;</span>
+  <span style="float: right">
+     Next: 
+    <a href="../spatialDemo/">
+      Spatial Demo 
+    </a>
+    
+  </span>
+</div>
+  
+</div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../"></a></h1>
+
+
+
+
+
+
+
+
+  
+<h2>
+   
+  25 July 2018 
+</h2>
+
+<ul>
+   
+<li id="author">
+  <span
+    >Author:</span
+  >
+   
+  <a href="../../blog/author/keri-sime/">Keri Sime</a>  
+</li>
+     
+</ul>
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../about/">About Keri Sime</a></li>
+</ul>
+
+
+<h3>
+  <a href="../../blog/">Recent Posts</a>
+</h3>
+<ul>
+   
+  <li>
+    <a href="../spatialDemo/"
+      >25 April - Spatial Demo</a
+    >
+  </li>
+  
+  <li>
+    <a href="../imbalancedClasses/"
+      >25 July - Imbalanced Classes</a
+    >
+  </li>
+  
+  <li>
+    <a href="../decisionTree/"
+      >30 June - Decision Trees</a
+    >
+  </li>
+  
+  <li>
+    <a href="../logreg/"
+      >09 May - Logistic Regression</a
+    >
+  </li>
+  
+  <li>
+    <a href="../svm/"
+      >27 February - Support Vector Machines</a
+    >
+  </li>
+  
+</ul>
+
+<h3>
+  <a href="../../blog/archive/">Archives</a>
+</h3>
+<ul>
+   
+  <li>
+    <a href="../../blog/2022/">2022 (1)</a>
+  </li>
+    
+  <li>
+    <a href="../../blog/2018/">2018 (5)</a>
+  </li>
+   
+</ul>
+
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search/" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2022, Keri Sime.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 5.0.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../../_sources/posts/randomForests.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

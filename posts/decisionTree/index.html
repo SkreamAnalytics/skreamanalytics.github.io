@@ -1,0 +1,569 @@
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+    <title>Decision Trees &#8212;   documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css" />
+    <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <link rel="author" title="About these documents" href="../../about/" />
+    <link rel="index" title="Index" href="../../genindex/" />
+    <link rel="search" title="Search" href="../../search/" /> 
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+  
+<style type="text/css">
+  ul.ablog-archive {
+    list-style: none;
+    overflow: auto;
+    margin-left: 0px;
+  }
+  ul.ablog-archive li {
+    float: left;
+    margin-right: 5px;
+    font-size: 80%;
+  }
+  ul.postlist a {
+    font-style: italic;
+  }
+  ul.postlist-style-disc {
+    list-style-type: disc;
+  }
+  ul.postlist-style-none {
+    list-style-type: none;
+  }
+  ul.postlist-style-circle {
+    list-style-type: circle;
+  }
+</style>
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+             <section id="decision-trees">
+<h1>Decision Trees<a class="headerlink" href="#decision-trees" title="Permalink to this heading">¶</a></h1>
+<p>A decision tree is an intuitive machine learning model that can be
+represented as a diagram showing sequential decisions and their possible
+outcomes. For example, we could split a group of adults firstly by
+gender, then by age and finally by food preferences in order to segment
+a target population for marketing purposes. Even though this model
+breaks down a population into subgroups it can be used for both
+classification and regression tasks.</p>
+</section>
+<section id="theory">
+<h1>Theory<a class="headerlink" href="#theory" title="Permalink to this heading">¶</a></h1>
+<p>The following image is of a binary classification tree deciding if an
+individual is French or English. The tree is `binary’ because at each
+node is split into only two sub-samples. There are three types of nodes:
+root, internal and terminal. The root node is the first node and it
+includes a decision rule or a splitting condition. The subsequent nodes,
+which also include a decision rule, are called internal nodes. The final
+nodes giving the resulting decision, that do not lead on to subsequent
+splits, are called terminal or leaf nodes. The lines joining the nodes
+can either be called edges or branches.</p>
+<a class="reference internal image-reference" href="../../_images/decision_tree.PNG"><img alt="../../_images/decision_tree.PNG" src="../../_images/decision_tree.PNG" style="width: 600px;" /></a>
+<p>Machine learning is used to create the best decision tree for a
+predetermined outcome. The decision tree tells us which variables are
+important and what splitting rules we should apply. This allows us to
+better understand our data and is therefore useful for data exploration.
+The model can then be used to predict the class or value for new
+examples which have not yet been labelled. More generally, this type of
+machine learning model is a supervised learning technique. As opposed to
+unsupervised learning, where we do not have a predetermined expected
+outcome.</p>
+<p>The learning process tries and tests different splitting conditions. For
+each decision node it chooses the split which gives the best quality
+partition. The main considerations for decision tree learning are the
+choice of splitting criterion, whether there are binary or multiple
+splits at each node and the ideal size of the tree (Rakotomalala).
+Decision trees can be used for both classification and regression
+problems. The difference being the criterion used to evaluate the
+quality of the split. Splitting criterion can be based on impurity
+minimisation, information gain or other statistical measures. Common
+splitting criteria are the <em>Gini index</em> and <em>information gain</em> for
+classification and the <em>sum squared error</em> or variants for regression.</p>
+<p>If stopping rules are not implemented, the dataset will continue to be
+split into subgroups until there is only a single example in each node.
+However, this would be a case of severe overfitting and so stopping
+rules are used to limit the tree size. It is preferred to lose some
+accuracy in order to have a more general model which can then be applied
+to newly introduced examples. Tree size can also be controlled using
+pruning which involves reducing a tree to a sub-tree after the learning
+process has been completed.</p>
+<p>Decision trees have several advantages over other machine learning
+algorithms. A major advantage, especially in a business context, is that
+they are easily understood as opposed to `black box’ methods, such as
+<em>artificial neural networks</em>, where we are incapable of explaining
+exactly how the results have been derived. Other advantages are the fact
+that decision trees are easy to implement and are computationally cheap.
+Decision trees are also suitable for a wide range of datasets. They do
+not make assumptions about the population distribution, handle
+heterogeneous data as well as missing values.</p>
+<p>Examples of machine learning algorithms available to implement decision trees are:</p>
+<ul class="simple">
+<li><p><em>AID</em> (Automatic Interaction Dectection), <em>THAID</em> (THeta AID) and</p></li>
+<li><p><em>CHAID</em> (Chi-squared AID)</p></li>
+<li><p><em>CART</em> (Classification and Regression Trees)</p></li>
+<li><p><em>ID3</em> (Iterative Dichotomiser 3) and its successors <em>C4.5</em> &amp; <em>C5.0</em></p></li>
+<li><p><em>MARS</em> (Multivariate Adaptive Regression Splines)</p></li>
+<li><p><em>Conditional Inference Trees</em></p></li>
+</ul>
+<p>The C5.0 algorithm is implemented in R by the <em>C50</em> package while the
+CART model is implemented by the <em>rpart</em> package. In Python the CART
+model is implemented by the <em>scikit-learn</em> library. Spark’s machine
+learning library MLlib implements a mixed ID3 and CART variant.</p>
+<section id="cart-model">
+<h2>CART Model<a class="headerlink" href="#cart-model" title="Permalink to this heading">¶</a></h2>
+<p>The CART model was introduced by Brieman, Freidman, Olshen, and Stone in
+1984. It is a form of greedy, top-down, binary recursive partitioning
+which incorporates various stopping techniques as well as post-build
+pruning. The CART model also handles missing values by surrogating tests
+to approximate outcomes. The original model offered a choice of the Gini
+and <em>Twoing</em> criteria to measure split quality. However, libraries such
+as those in R and Python implement the Gini index and an information
+gain criterion based on <em>entropy</em>. For regression trees the splitting
+criterion is the <em>residual sum of squares</em>.</p>
+<p>The Gini index, used in classification, provides an evaluation of the
+node’s impurity. If <span class="math notranslate nohighlight">\(p_i\)</span> is the proportion of examples labelled with class
+<span class="math notranslate nohighlight">\(i\)</span> grouped in a node then:</p>
+<div class="math notranslate nohighlight">
+\[G = \sum_i p_i (1 - p_i) = 1 - \sum_i p_i^2\]</div>
+<p>The minimum value is zero which is when all examples in the node have
+the same class. So, for a given choice of splits, the best split gives
+the smallest value for the Gini index.</p>
+<p>Stopping rules stop the growth of the tree to minimise overfitting.
+The following stopping rules are used by the CART algorithm (IBM):
+* Stop if a node is pure i.e. if all examples in the node are identical.
+* Stop if all examples in the node have identical values for the remaining splitting predictors not already used.
+* Stop once the user-specified maximum tree depth limit has been reached.
+* Stop if the splitting the node would result in a child node which is smaller than the user-specified minimum node size value.
+* Stop if the improvement in the quality criterion is smaller than the user-specified value.</p>
+<p>As well as stopping rules being implemented to control tree size, the
+CART algorithm uses cost-complexity pruning to reduce the final tree
+size. The cost-complexity measure is defined as (PSU):</p>
+<div class="math notranslate nohighlight">
+\[R_\alpha(T) = R(T) + \alpha \vert T^* \vert\]</div>
+<p>Where <span class="math notranslate nohighlight">\(\vert T^* \vert\)</span> is the complexity or number of leaf nodes for tree
+<span class="math notranslate nohighlight">\(T\)</span>, <span class="math notranslate nohighlight">\(\alpha \geqslant 0\)</span> is a real number and <span class="math notranslate nohighlight">\(R(T)\)</span>
+the misclassification rate. A bigger tree will have a lower
+misclassification rate but a higher complexity value due to more nodes.
+The complexity parameter, <span class="math notranslate nohighlight">\(\alpha\)</span>, adjusts for the level of importance we put on the complexity or size
+of the tree. The idea is to choose the sub-tree which minimises <span class="math notranslate nohighlight">\(R_\alpha(T)\)</span>.</p>
+</section>
+<section id="c5-0">
+<h2>C5.0<a class="headerlink" href="#c5-0" title="Permalink to this heading">¶</a></h2>
+<p>The C5.0 algorithm by Ross Quinlin (1994) creates decision trees for
+classification only and is also known as a statistical classifier.
+However, it does allow multi-branch splits as opposed to just the binary
+splits implemented by the CART algorithm. The splitting criterion used
+is information gain (entropy) and pruning is down by the <em>Binomial
+Confidence Limit</em> method. Finally, C5.0 gives a choice of treatments for
+missing values: either estimating the value as a function of of other
+attributes or apportioning the case statistically among the results
+(Nguyen).</p>
+<p>Binomial confidence level pruning involves calculating binary confidence
+intervals for each node in the tree. In each node, we have N indivduals
+of which E of them do not belong to the most frequent class. The error
+rate for this node is then the upper limit of the binary confidence
+interval for E events being observed in N trials. Pruning is then
+applied starting at the leaf nodes and working back to the root node.
+For each leaf, its estimated error is N times the previously calculated
+binomial error rate. While the error rate of a subtree is the sum of the
+estimated errors of its branches. If the error rate of the subtree is
+higher than that of its root node than it is pruned. Similarly, if the
+error rate of one of the branches is lower than that of the subtree than
+the subtree is replaced by this branch (Wu et al.).</p>
+<p>Information gain is calculated using the entropy, a measure of
+disorderedness (Fürnkranz). If <span class="math notranslate nohighlight">\(S\)</span> is a set of examples and <span class="math notranslate nohighlight">\(p_i\)</span>
+is the proportion of examples that belong to class <span class="math notranslate nohighlight">\(i\)</span> then the entropy is:</p>
+<div class="math notranslate nohighlight">
+\[E(S) = - \sum_i p_i . log p_i\]</div>
+<p>When an attribute, <span class="math notranslate nohighlight">\(A\)</span>, splits the set into subsets, <span class="math notranslate nohighlight">\(S_i\)</span>, then the information gain for attribute <span class="math notranslate nohighlight">\(A\)</span> is:</p>
+<div class="math notranslate nohighlight">
+\[Gain(S,A) = E(S)- \sum_i \frac{\vert S_i\vert}{\vert S\vert}. E(S_i)\]</div>
+</section>
+</section>
+<section id="code">
+<h1>Code<a class="headerlink" href="#code" title="Permalink to this heading">¶</a></h1>
+<p>I’ve recently started coding in PySpark so I thought I’d present a
+PySpark decision tree implementation. I’m working in Jupyter notebook
+with Python 3.0 and Spark 2.1. I chose version 2.1 because I use 2.0 at
+work but Python 3.0 requires minimum 2.1 and I didn’t want to reinstall
+Python. I used Anaconda to install Jupyter a while back and so I just
+needed to install the Spark components. I’m using Windows 10 and have
+been able to system paths working even though I’ve tried several
+solutions so I have to declare the follwing at the start of my session
+along with the usual need to define the Spark context.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+
+<span class="n">spark_path</span> <span class="o">=</span> <span class="s2">&quot;LOCATION OF SPARK FILES ON YOUR PC&quot;</span>
+
+<span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s1">&#39;SPARK_HOME&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">spark_path</span>
+<span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s1">&#39;HADOOP_HOME&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">spark_path</span>
+
+<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">spark_path</span> <span class="o">+</span> <span class="s2">&quot;/bin&quot;</span><span class="p">)</span>
+<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">spark_path</span> <span class="o">+</span> <span class="s2">&quot;/python&quot;</span><span class="p">)</span>
+<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">spark_path</span> <span class="o">+</span> <span class="s2">&quot;/python/pyspark/&quot;</span><span class="p">)</span>
+<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">spark_path</span> <span class="o">+</span> <span class="s2">&quot;/python/lib&quot;</span><span class="p">)</span>
+<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">spark_path</span> <span class="o">+</span> <span class="s2">&quot;/python/lib/pyspark.zip&quot;</span><span class="p">)</span>
+<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">spark_path</span> <span class="o">+</span> <span class="s2">&quot;/python/lib/py4j-0.10.4-src.zip&quot;</span><span class="p">)</span> <span class="c1"># exact file name depends on the version you downloaded</span>
+
+<span class="kn">from</span> <span class="nn">pyspark</span> <span class="kn">import</span> <span class="n">SparkContext</span>
+<span class="kn">from</span> <span class="nn">pyspark</span> <span class="kn">import</span> <span class="n">SparkConf</span>
+
+<span class="n">sc</span> <span class="o">=</span> <span class="n">SparkContext</span><span class="p">(</span><span class="s2">&quot;local&quot;</span><span class="p">,</span> <span class="s2">&quot;test&quot;</span><span class="p">)</span>
+
+<span class="kn">from</span> <span class="nn">pyspark.sql</span> <span class="kn">import</span> <span class="n">SQLContext</span>
+<span class="n">sqlc</span> <span class="o">=</span> <span class="n">SQLContext</span><span class="p">(</span><span class="n">sc</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The dataset can be downloaded from :
+<a class="reference external" href="https://archive.ics.uci.edu/ml/datasets/Wine">https://archive.ics.uci.edu/ml/datasets/Wine</a>. It’s a classification
+problem with 3 classes representing 3 wine producing regions and 13
+variables representing chemical analyses of the wines. It’s a very easy
+classification problem so you will see that we have good accuracy
+levels.</p>
+<p>To load the data:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1">#Import the data</span>
+<span class="n">df</span> <span class="o">=</span> <span class="n">sqlc</span><span class="o">.</span><span class="n">read</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s1">&#39;com.databricks.spark.csv&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">options</span><span class="p">(</span><span class="n">header</span><span class="o">=</span><span class="s1">&#39;false&#39;</span><span class="p">,</span> <span class="n">inferschema</span><span class="o">=</span><span class="s1">&#39;true&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s1">&#39;data_wine.txt&#39;</span><span class="p">)</span>
+<span class="n">df</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">withColumnRenamed</span><span class="p">(</span><span class="s1">&#39;_c0&#39;</span><span class="p">,</span><span class="s1">&#39;label&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The first column which represents the regions is renamed to “label” so
+that the algorithm instantly recognises that this is the variable that
+we want to model.</p>
+<p>The dataset hasn’t got any other categorical values in it so the next
+bit of code just adds a variable which we’ll later recode with
+stringIndexer works. Strings are not handled by the machine learning
+alogrithms so we have to translate them to numerical categories. Clearly
+I could have created assigned numerical categories in the first place
+but the point is to use stringIndexer.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Create a new variable</span>
+<span class="kn">from</span> <span class="nn">pyspark.sql.functions</span> <span class="kn">import</span> <span class="n">udf</span><span class="p">,</span><span class="n">col</span>
+<span class="kn">from</span> <span class="nn">pyspark.sql.types</span> <span class="kn">import</span> <span class="n">StringType</span>
+
+<span class="c1"># Define the rule for the new variable</span>
+<span class="k">def</span> <span class="nf">indicator</span><span class="p">(</span><span class="n">col1</span><span class="p">,</span> <span class="n">col2</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">col1</span><span class="o">&gt;</span><span class="n">col2</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s1">&#39;Y&#39;</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s1">&#39;N&#39;</span>
+
+<span class="c1"># Create a function using udf which allows us to pass columns as an input. It&#39;s impossible to loop over rows in a Spark dataframe.</span>
+<span class="n">function</span> <span class="o">=</span> <span class="n">udf</span><span class="p">(</span><span class="n">indicator</span><span class="p">,</span> <span class="n">StringType</span><span class="p">())</span>
+
+<span class="c1"># Finally create the column.</span>
+<span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">withColumn</span><span class="p">(</span><span class="s1">&#39;_c14&#39;</span><span class="p">,</span><span class="n">function</span><span class="p">(</span><span class="n">col</span><span class="p">(</span><span class="s1">&#39;_c6&#39;</span><span class="p">),</span> <span class="n">col</span><span class="p">(</span><span class="s1">&#39;_c7&#39;</span><span class="p">)))</span>
+<span class="n">df</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>You will see an extra column called ’_c14’ has been added with entries
+of ‘N’ and ‘Y’. Next these strings need to be replaced.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">pyspark.ml.feature</span> <span class="kn">import</span> <span class="n">StringIndexer</span>
+
+<span class="c1">#Create the indexer</span>
+<span class="n">indexer</span> <span class="o">=</span> <span class="n">StringIndexer</span><span class="p">(</span><span class="n">inputCol</span><span class="o">=</span><span class="s2">&quot;_c14&quot;</span><span class="p">,</span> <span class="n">outputCol</span><span class="o">=</span><span class="s2">&quot;_c14Cat&quot;</span><span class="p">)</span>
+
+<span class="c1">#Apply the indexer and drop the column containg strings at the same time.</span>
+<span class="n">df</span> <span class="o">=</span> <span class="n">indexer</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">df</span><span class="p">)</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">df</span><span class="p">)</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="s2">&quot;_c14&quot;</span><span class="p">)</span>
+<span class="n">df</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>You will see that we have now replaced the column of strings by ones and
+zeros.</p>
+<p>Finally we want to put the data into a form that can be handled by the
+algorithm. Here all the explanatory variables are grouped into a single
+column called “features”.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">pyspark.ml.feature</span> <span class="kn">import</span> <span class="n">VectorAssembler</span>
+
+<span class="n">df</span><span class="o">=</span><span class="p">(</span><span class="n">VectorAssembler</span><span class="p">(</span><span class="n">inputCols</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">schema</span><span class="o">.</span><span class="n">names</span><span class="p">[</span><span class="mi">1</span><span class="p">:],</span> <span class="n">outputCol</span><span class="o">=</span><span class="s2">&quot;features&quot;</span><span class="p">)</span>
+               <span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">df</span><span class="p">))</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="s1">&#39;label&#39;</span><span class="p">,</span><span class="s1">&#39;features&#39;</span><span class="p">)</span>
+
+<span class="n">df</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+</pre></div>
+</div>
+<a class="reference internal image-reference" href="../../_images/labelfeatures.PNG"><img alt="../../_images/labelfeatures.PNG" class="align-center" src="../../_images/labelfeatures.PNG" style="width: 300px;" /></a>
+<p>If instead of using show() to display the dataframe, we use take() you
+can see what it really looks like.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">df</span><span class="o">.</span><span class="n">take</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+</pre></div>
+</div>
+<a class="reference internal image-reference" href="../../_images/labelfeaturesStruct.PNG"><img alt="../../_images/labelfeaturesStruct.PNG" src="../../_images/labelfeaturesStruct.PNG" style="width: 600px;" /></a>
+<p>So you can see that we have the features or explanatory variables stored
+as “dense vectors”.</p>
+<p>Finally we need to indicate which variables are categorical. In our case
+there is only one categorical variable which is the last column that we
+just created. However, as long as we indicate the maximum number or
+classes for our categorical variables, in our case 2, then the vector
+indexer will actomatically identify the categorical features.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">pyspark.ml.feature</span> <span class="kn">import</span> <span class="n">VectorIndexer</span>
+<span class="n">df</span><span class="o">=</span><span class="n">VectorIndexer</span><span class="p">(</span><span class="n">inputCol</span><span class="o">=</span><span class="s2">&quot;features&quot;</span><span class="p">,</span> <span class="n">outputCol</span><span class="o">=</span><span class="s2">&quot;indexedFeatures&quot;</span><span class="p">,</span> <span class="n">maxCategories</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">df</span><span class="p">)</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>We have now added another column “indexedFeatures” and it is this column
+that we will input into the model. Now we are ready to do the
+modelisation.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">pyspark.ml.classification</span> <span class="kn">import</span> <span class="n">DecisionTreeClassifier</span>
+<span class="kn">from</span> <span class="nn">pyspark.ml.evaluation</span> <span class="kn">import</span> <span class="n">MulticlassClassificationEvaluator</span>
+
+<span class="c1"># Split the data into train and test</span>
+<span class="p">(</span><span class="n">trainingData</span><span class="p">,</span> <span class="n">testData</span><span class="p">)</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">randomSplit</span><span class="p">([</span><span class="mf">0.7</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">])</span>
+
+<span class="c1"># Create the trainer and set its parameters</span>
+<span class="n">dt</span> <span class="o">=</span> <span class="n">DecisionTreeClassifier</span><span class="p">(</span><span class="n">labelCol</span><span class="o">=</span><span class="s2">&quot;label&quot;</span><span class="p">,</span><span class="n">featuresCol</span><span class="o">=</span><span class="s2">&quot;indexedFeatures&quot;</span><span class="p">)</span>
+
+<span class="c1"># Train the model</span>
+<span class="n">model</span><span class="o">=</span> <span class="n">dt</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">trainingData</span><span class="p">)</span>
+
+<span class="c1"># Compute accuracy on the test set</span>
+<span class="n">predictions</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">testData</span><span class="p">)</span>
+
+<span class="n">predictions</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="s2">&quot;prediction&quot;</span><span class="p">,</span><span class="s2">&quot;label&quot;</span><span class="p">,</span><span class="s2">&quot;features&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+
+<span class="c1"># Select (prediction, true label) and compute test error</span>
+<span class="n">evaluator</span> <span class="o">=</span> <span class="n">MulticlassClassificationEvaluator</span><span class="p">(</span>
+    <span class="n">labelCol</span><span class="o">=</span><span class="s2">&quot;label&quot;</span><span class="p">,</span> <span class="n">predictionCol</span><span class="o">=</span><span class="s2">&quot;prediction&quot;</span><span class="p">,</span> <span class="n">metricName</span><span class="o">=</span><span class="s2">&quot;accuracy&quot;</span><span class="p">)</span>
+<span class="n">accuracy</span> <span class="o">=</span> <span class="n">evaluator</span><span class="o">.</span><span class="n">evaluate</span><span class="p">(</span><span class="n">predictions</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Accuracy = </span><span class="si">%g</span><span class="s2"> &quot;</span> <span class="o">%</span> <span class="n">accuracy</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>I re-ran the code several times getting between 79% and 96% accuracy
+depending on the random sampling for the training and testing datasets.
+I kept a difficult to model split which gave only 80% accuracy and then
+went on to tune the model for it to see if the accuracy could be
+improved for this split.</p>
+<p>Firstly a parameter grid is created for the different choices we want to
+test. I decided to test different try depths and different split quality
+measures.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Tuning</span>
+<span class="kn">from</span> <span class="nn">pyspark.ml.tuning</span> <span class="kn">import</span> <span class="n">ParamGridBuilder</span><span class="p">,</span> <span class="n">CrossValidator</span>
+
+<span class="c1"># Create the grid with parameters for maxDepth and impurity</span>
+<span class="n">grid</span> <span class="o">=</span> <span class="n">ParamGridBuilder</span><span class="p">()</span>\
+    <span class="o">.</span><span class="n">addGrid</span><span class="p">(</span><span class="n">dt</span><span class="o">.</span><span class="n">maxDepth</span><span class="p">,[</span><span class="mi">2</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">10</span><span class="p">])</span>\
+    <span class="o">.</span><span class="n">addGrid</span><span class="p">(</span><span class="n">dt</span><span class="o">.</span><span class="n">impurity</span><span class="p">,[</span><span class="s1">&#39;gini&#39;</span><span class="p">,</span><span class="s1">&#39;entropy&#39;</span><span class="p">])</span>\
+    <span class="o">.</span><span class="n">build</span><span class="p">()</span>
+
+<span class="c1"># Create the evaluator which defines how we measure accuracy</span>
+<span class="n">evaluator</span> <span class="o">=</span> <span class="n">MulticlassClassificationEvaluator</span><span class="p">(</span>
+    <span class="n">labelCol</span><span class="o">=</span><span class="s2">&quot;label&quot;</span><span class="p">,</span> <span class="n">predictionCol</span><span class="o">=</span><span class="s2">&quot;prediction&quot;</span><span class="p">,</span> <span class="n">metricName</span><span class="o">=</span><span class="s2">&quot;accuracy&quot;</span><span class="p">)</span>
+
+<span class="c1"># Create the trainer</span>
+<span class="n">cv</span><span class="o">=</span><span class="n">CrossValidator</span><span class="p">(</span><span class="n">estimator</span><span class="o">=</span> <span class="n">dt</span>
+<span class="p">,</span> <span class="n">estimatorParamMaps</span><span class="o">=</span><span class="n">grid</span><span class="p">,</span> <span class="n">evaluator</span><span class="o">=</span><span class="n">evaluator</span><span class="p">,</span> <span class="n">numFolds</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+
+<span class="c1"># Train the model</span>
+<span class="n">cvModel</span> <span class="o">=</span> <span class="n">cv</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">trainingData</span><span class="p">)</span>
+
+<span class="c1">#Get the accuracy of the best model</span>
+<span class="n">evaluator</span><span class="o">.</span><span class="n">evaluate</span><span class="p">(</span><span class="n">cvModel</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">testData</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>This improved accuracy to 0.85. If you want to see the details for each
+of the models you can do the following.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nb">list</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">cvModel</span><span class="o">.</span><span class="n">avgMetrics</span><span class="p">,</span> <span class="n">grid</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>The average metric is the average accuracy for the 5 models built for
+each parameter set, 5 being the numFolds parameter for the cross-fold
+validation.</p>
+<p>Now we extract the parameters for the best model.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="n">cvModel</span><span class="o">.</span><span class="n">getEstimatorParamMaps</span><span class="p">()[</span> <span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">cvModel</span><span class="o">.</span><span class="n">avgMetrics</span><span class="p">)</span> <span class="p">]</span>
+</pre></div>
+</div>
+<p>The image shows up too small to read but if you click on, a readable
+version will open.</p>
+<a class="reference internal image-reference" href="../../_images/params.PNG"><img alt="../../_images/params.PNG" src="../../_images/params.PNG" style="width: 600px;" /></a>
+<p>Finally we look at the model produced by these parameters.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cvModel</span><span class="o">.</span><span class="n">bestModel</span><span class="o">.</span><span class="n">toDebugString</span>
+</pre></div>
+</div>
+<a class="reference internal image-reference" href="../../_images/bestModel.PNG"><img alt="../../_images/bestModel.PNG" src="../../_images/bestModel.PNG" style="width: 600px;" /></a>
+<section id="references">
+<h2>References<a class="headerlink" href="#references" title="Permalink to this heading">¶</a></h2>
+<p>R. Rakotomalala. Decision tree learning algorithms.
+<a class="reference external" href="http://eric.univlyon2">http://eric.univlyon2</a>. fr/
+ricco/cours/slides/en/Methodes_arbres_decision_cart_chaid_c45.pdf.</p>
+<p>IBM.
+<a class="reference external" href="ftp://ftp.boulder.ibm.com/software/analytics/spss/support/Stats/Docs/Statistics/Algorithms/14.0/TREE-CART.pdf">ftp://ftp.boulder.ibm.com/software/analytics/spss/support/Stats/Docs/Statistics/Algorithms/14.0/TREE-CART.pdf</a>.</p>
+<div class="line-block">
+<div class="line">PSU (The Pennsylvania State University)</div>
+<div class="line">Online course : Minimal Cost-Complexity Pruning
+<a class="reference external" href="https://onlinecourses.science.psu.edu/stat857/node/60/">https://onlinecourses.science.psu.edu/stat857/node/60/</a></div>
+</div>
+<div class="line-block">
+<div class="line">A. Nguyen</div>
+<div class="line">Comparative Study of C5.0 and CART Algorithms 2017
+<a class="reference external" href="http://mercury.webster.edu/aleshunas/Support%20Materials/C4.5/Nguyen-Presentation%20Data%20mining.pdf">http://mercury.webster.edu/aleshunas/Support%20Materials/C4.5/Nguyen-Presentation%20Data%20mining.pdf</a></div>
+</div>
+<div class="line-block">
+<div class="line">Wu et al.</div>
+<div class="line">Top 10 algorithms in data mining 2008</div>
+<div class="line">X. Wu, V. Kumar, J.R. Quinlan, J. Ghosh, Q. Yang, H. Motoda, G.J.
+McLachlan, A. Ng, B. Liu,P.S. Yu, Z. Zhou, M. Steinbach, D.J. Hand, D.
+Steinberg</div>
+<div class="line">Knowl Inf Syst (2008) 14:1–37</div>
+<div class="line">DOI 10.1007/s10115-007-0114-2</div>
+<div class="line"><a class="reference external" href="http://www.cs.uvm.edu/~icdm/algorithms/10Algorithms-08.pdf">http://www.cs.uvm.edu/~icdm/algorithms/10Algorithms-08.pdf</a></div>
+</div>
+<div class="line-block">
+<div class="line">J. Fürnkranz</div>
+<div class="line">Decision-Tree Learning</div>
+<div class="line"><a class="reference external" href="http://www.ke.tu-darmstadt.de/lehre/archiv/ws0809/mldm/dt.pdf">http://www.ke.tu-darmstadt.de/lehre/archiv/ws0809/mldm/dt.pdf</a></div>
+</div>
+</section>
+</section>
+
+<div class="section">
+    
+
+<div class="section">
+  <span style="float: left">
+     Previous:
+    
+    <a href="../logreg/">
+       Logistic Regression
+    </a>
+    
+  </span>
+  <span>&nbsp;</span>
+  <span style="float: right">
+     Next: 
+    <a href="../spatialDemo/">
+      Spatial Demo 
+    </a>
+    
+  </span>
+</div>
+  
+</div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../"></a></h1>
+
+
+
+
+
+
+
+
+  
+<h2>
+   
+  30 June 2018 
+</h2>
+
+<ul>
+   
+<li id="author">
+  <span
+    >Author:</span
+  >
+   
+  <a href="../../blog/author/keri-sime/">Keri Sime</a>  
+</li>
+     
+</ul>
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../about/">About Keri Sime</a></li>
+</ul>
+
+
+<h3>
+  <a href="../../blog/">Recent Posts</a>
+</h3>
+<ul>
+   
+  <li>
+    <a href="../spatialDemo/"
+      >25 April - Spatial Demo</a
+    >
+  </li>
+  
+  <li>
+    <a href="../logreg/"
+      >09 May - Logistic Regression</a
+    >
+  </li>
+  
+  <li>
+    <a href="../svm/"
+      >27 February - Support Vector Machines</a
+    >
+  </li>
+  
+</ul>
+
+<h3>
+  <a href="../../blog/archive/">Archives</a>
+</h3>
+<ul>
+   
+  <li>
+    <a href="../../blog/2022/">2022 (1)</a>
+  </li>
+    
+  <li>
+    <a href="../../blog/2018/">2018 (3)</a>
+  </li>
+   
+</ul>
+
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search/" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2022, Keri Sime.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 5.0.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../../_sources/posts/decisionTree.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

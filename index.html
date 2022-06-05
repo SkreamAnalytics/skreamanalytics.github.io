@@ -70,24 +70,45 @@ in Jupyter notebooks, especially when that is the tool you are already
 using. Below is a simple demonstration for plotting New Zealand 2018
 census data in a Jupyter notebook.</p>
 </li>
+<li class="ablog-post"><p class="ablog-post-title">25 July - <a class="reference internal" href="posts/randomForests/">Random Forests</a></p>
+<p class="ablog-post-excerpt"><em>Ensemble methods</em> have been developed to improve the performance of
+individual machine learning algorithms. These methods build multiple
+models, such as decision trees, and combine the decisions of the
+individual models by either averaging for a continuous output or through
+a majority vote for classification tasks. The idea is that by combining
+weak models of the same type, we can improve performance. The weak
+models must be sufficiently different to improve the overall performance
+of the ensemble. For example, <em>boosted tree</em> algorithms incrementally
+build an ensemble of decision trees by training new trees with an
+emphasis on the individuals that were previously misclassified. Another
+method, <em>Bootstrap aggregating</em> (<em>bagging</em>), builds a decision tree
+ensemble by repeatedly re-sampling training data with replacement this
+results in a <em>bagged forest</em>. Other types of ensemble methods based on
+decision trees include <em>random forests</em>, <em>purely random forests</em> and
+<em>rotation forests</em>.</p>
+</li>
+<li class="ablog-post"><p class="ablog-post-title">25 July - <a class="reference internal" href="posts/imbalancedClasses/">Imbalanced Classes</a></p>
+<p class="ablog-post-excerpt">I am currently working on a binary classification problem whereby one of
+my classes contains more than 90% of the individuals. This is a common
+problem in fraud detection and customer churn prediction which makes
+both the modelling and the evaluation of the model more difficult.
+However, there are ways to overcome these problems. Here, I will present
+the two approaches that I have used.</p>
+</li>
+<li class="ablog-post"><p class="ablog-post-title">30 June - <a class="reference internal" href="posts/decisionTree/">Decision Trees</a></p>
+<p class="ablog-post-excerpt">A decision tree is an intuitive machine learning model that can be
+represented as a diagram showing sequential decisions and their possible
+outcomes. For example, we could split a group of adults firstly by
+gender, then by age and finally by food preferences in order to segment
+a target population for marketing purposes. Even though this model
+breaks down a population into subgroups it can be used for both
+classification and regression tasks.</p>
+</li>
 <li class="ablog-post"><p class="ablog-post-title">09 May - <a class="reference internal" href="posts/logreg/">Logistic Regression</a></p>
 <p class="ablog-post-excerpt">Don’t be fooled by the name, logistic regression is actually a
 <em>classification</em> model and one of the most commonly used at that.
 However, the name still makes sense as the mathematics of this model are
 based on linear regression.</p>
-</li>
-<li class="ablog-post"><p class="ablog-post-title">27 February - <a class="reference internal" href="posts/svm/">Support Vector Machines</a></p>
-<p class="ablog-post-excerpt">The support vector machine (SVM) is a classification method which groups
-similar individuals into classes depending on their characteristics. The
-example below left shows 10 individuals classed either as positive (+)
-or negative (-). The individuals can be divided into two classes by
-putting a straight line between them, they are linearly separable.
-However, several different lines can be fitted and we want to choose the
-best line. The support vector machine does this by maximizing the
-distance between classes in order to minimize the probability that a new
-individual is misclassified by using a <em>maximum margin separator</em>. The
-maximum margin separator is a decision boundary which maximizes the
-distance between the <strong>closest</strong> points to the line and the line itself.</p>
 </li>
 </ul>
 <div class="toctree-wrapper compound">
@@ -131,14 +152,26 @@ distance between the <strong>closest</strong> points to the line and the line it
   </li>
   
   <li>
-    <a href="posts/logreg/"
-      >09 May - Logistic Regression</a
+    <a href="posts/randomForests/"
+      >25 July - Random Forests</a
     >
   </li>
   
   <li>
-    <a href="posts/svm/"
-      >27 February - Support Vector Machines</a
+    <a href="posts/imbalancedClasses/"
+      >25 July - Imbalanced Classes</a
+    >
+  </li>
+  
+  <li>
+    <a href="posts/decisionTree/"
+      >30 June - Decision Trees</a
+    >
+  </li>
+  
+  <li>
+    <a href="posts/logreg/"
+      >09 May - Logistic Regression</a
     >
   </li>
   
@@ -154,7 +187,7 @@ distance between the <strong>closest</strong> points to the line and the line it
   </li>
     
   <li>
-    <a href="blog/2018/">2018 (2)</a>
+    <a href="blog/2018/">2018 (5)</a>
   </li>
    
 </ul>
