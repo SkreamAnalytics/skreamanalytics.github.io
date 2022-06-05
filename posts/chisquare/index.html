@@ -1,0 +1,351 @@
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+    <title>Chi-square Testing in Oracle SQL &#8212;   documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css" />
+    <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <link rel="author" title="About these documents" href="../../about/" />
+    <link rel="index" title="Index" href="../../genindex/" />
+    <link rel="search" title="Search" href="../../search/" /> 
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+  
+<style type="text/css">
+  ul.ablog-archive {
+    list-style: none;
+    overflow: auto;
+    margin-left: 0px;
+  }
+  ul.ablog-archive li {
+    float: left;
+    margin-right: 5px;
+    font-size: 80%;
+  }
+  ul.postlist a {
+    font-style: italic;
+  }
+  ul.postlist-style-disc {
+    list-style-type: disc;
+  }
+  ul.postlist-style-none {
+    list-style-type: none;
+  }
+  ul.postlist-style-circle {
+    list-style-type: circle;
+  }
+</style>
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+             <section id="chi-square-testing-in-oracle-sql">
+<h1>Chi-square Testing in Oracle SQL<a class="headerlink" href="#chi-square-testing-in-oracle-sql" title="Permalink to this heading">¶</a></h1>
+<p>I wanted to carry out a test to determine if there was statistically
+significant difference in customer churn for different genders across
+different campaigns. This is possible with the Pearson’s chi-square test
+of independence which allows us to test if there is a relationship
+between two categorical variables.</p>
+<p>Faced with too many tools to choose from and not being sure which was
+the best to use, I decided to see if I could do it in Oracle SQL. A
+quick search revealed there was an in-built function but I also wanted
+to automatically test the assumptions that the <em>expected value</em> of every
+cell be greater than 5. The other assumptions of independence, simple
+random sampling and sampling size being tested manually. The test
+compares <em>observed outcomes</em> with <em>expected</em> outcomes for a r x c
+contingency table using the chi-square distribution.</p>
+<p>The Pearson’s chi-square test of independence allows us to test the null
+hypothesis that there is no relationship between two categorical
+variables. So for each campaign, I tested the relationship between
+gender and churn.</p>
+<p>Here, I create some dummy data set for three campaigns (ABC, DEF and
+XYZ) and three gender options (male, female and other). About 10% of
+customers have churned.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">CREATE</span> <span class="n">MATERIALIZED</span> <span class="n">VIEW</span> <span class="n">cust_db</span> <span class="n">AS</span>
+
+<span class="o">/*</span> <span class="n">Non</span> <span class="n">churn</span> <span class="n">cases</span> <span class="k">for</span> <span class="n">which</span> <span class="n">churn_flag</span> <span class="o">=</span> <span class="mi">0</span> <span class="o">*/</span>
+<span class="n">SELECT</span> <span class="n">floor</span><span class="p">(</span><span class="n">dbms_random</span><span class="o">.</span><span class="n">VALUE</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mf">1E4</span><span class="p">))</span> <span class="n">AS</span> <span class="n">cust_no</span>
+<span class="p">,</span> <span class="mi">0</span> <span class="n">AS</span> <span class="n">churn_flag</span>
+<span class="p">,</span> <span class="n">decode</span><span class="p">(</span> <span class="nb">round</span><span class="p">(</span><span class="n">dbms_random</span><span class="o">.</span><span class="n">VALUE</span><span class="p">())</span> <span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;ABC&#39;</span><span class="p">,</span> <span class="s1">&#39;DEF&#39;</span><span class="p">)</span> <span class="n">AS</span> <span class="n">campaign</span>
+<span class="p">,</span> <span class="n">CASE</span>  <span class="n">WHEN</span> <span class="n">rand_var</span> <span class="n">BETWEEN</span> <span class="mi">0</span> <span class="n">AND</span> <span class="mf">0.475</span> <span class="n">THEN</span> <span class="s1">&#39;Male&#39;</span>
+      <span class="n">WHEN</span> <span class="n">rand_var</span> <span class="n">BETWEEN</span> <span class="mf">0.475</span> <span class="n">AND</span> <span class="mf">0.95</span> <span class="n">THEN</span> <span class="s1">&#39;Female&#39;</span>
+      <span class="n">ELSE</span> <span class="s1">&#39;Other&#39;</span>
+  <span class="n">END</span> <span class="n">AS</span> <span class="n">gender</span>
+
+<span class="n">FROM</span> <span class="p">(</span>
+        <span class="n">SELECT</span>  <span class="n">ROWNUM</span> <span class="n">ID</span>
+        <span class="p">,</span> <span class="n">dbms_random</span><span class="o">.</span><span class="n">VALUE</span><span class="p">()</span> <span class="n">AS</span> <span class="n">rand_var</span>
+
+        <span class="n">FROM</span> <span class="n">dual</span>
+
+        <span class="n">CONNECT</span> <span class="n">BY</span> <span class="n">LEVEL</span> <span class="o">&lt;=</span> <span class="mf">1E3</span>
+<span class="p">)</span>
+
+<span class="n">UNION</span>
+
+<span class="o">/*</span> <span class="n">Churn</span> <span class="n">cases</span><span class="p">,</span> <span class="k">with</span> <span class="n">more</span> <span class="n">male</span> <span class="n">than</span> <span class="n">female</span> <span class="n">churn</span> <span class="n">cases</span> <span class="o">*/</span>
+<span class="n">SELECT</span> <span class="n">floor</span><span class="p">(</span><span class="n">dbms_random</span><span class="o">.</span><span class="n">VALUE</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mf">1E4</span><span class="p">))</span> <span class="n">AS</span> <span class="n">cust_no</span>
+<span class="p">,</span> <span class="mi">1</span> <span class="n">AS</span> <span class="n">churn_flag</span>
+<span class="p">,</span> <span class="n">decode</span><span class="p">(</span> <span class="nb">round</span><span class="p">(</span><span class="n">dbms_random</span><span class="o">.</span><span class="n">VALUE</span><span class="p">())</span> <span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;ABC&#39;</span><span class="p">,</span> <span class="s1">&#39;DEF&#39;</span><span class="p">)</span> <span class="n">AS</span> <span class="n">campaign</span>
+<span class="p">,</span> <span class="n">CASE</span>  <span class="n">WHEN</span> <span class="n">rand_var</span> <span class="n">BETWEEN</span> <span class="mi">0</span> <span class="n">AND</span> <span class="mf">0.8</span> <span class="n">THEN</span> <span class="s1">&#39;Male&#39;</span>
+      <span class="n">WHEN</span> <span class="n">rand_var</span> <span class="n">BETWEEN</span> <span class="mf">0.8</span> <span class="n">AND</span> <span class="mf">0.95</span> <span class="n">THEN</span> <span class="s1">&#39;Female&#39;</span>
+      <span class="n">ELSE</span> <span class="s1">&#39;Other&#39;</span>
+  <span class="n">END</span> <span class="n">AS</span> <span class="n">gender</span>
+
+<span class="n">FROM</span> <span class="p">(</span>
+        <span class="n">SELECT</span>  <span class="n">ROWNUM</span> <span class="n">ID</span>
+        <span class="p">,</span> <span class="n">dbms_random</span><span class="o">.</span><span class="n">VALUE</span><span class="p">()</span> <span class="n">AS</span> <span class="n">rand_var</span>
+
+        <span class="n">FROM</span> <span class="n">dual</span>
+
+        <span class="n">CONNECT</span> <span class="n">BY</span> <span class="n">LEVEL</span> <span class="o">&lt;=</span> <span class="mi">100</span>
+<span class="p">)</span>
+
+<span class="n">UNION</span>
+
+<span class="o">/*</span> <span class="n">A</span> <span class="n">single</span> <span class="n">customer</span> <span class="n">having</span> <span class="n">subscribed</span> <span class="n">to</span> <span class="n">the</span> <span class="n">XYZ</span> <span class="n">campaign</span> <span class="o">*/</span>
+<span class="n">SELECT</span> <span class="mi">0</span> <span class="n">AS</span> <span class="n">cust_no</span>
+<span class="p">,</span> <span class="mi">0</span> <span class="n">AS</span> <span class="n">churn_flag</span>
+<span class="p">,</span> <span class="s1">&#39;XYZ&#39;</span> <span class="n">AS</span> <span class="n">campaign</span>
+<span class="p">,</span> <span class="s1">&#39;Female&#39;</span> <span class="n">AS</span> <span class="n">gender</span>
+
+<span class="n">FROM</span> <span class="n">dual</span>
+<span class="p">;</span>
+</pre></div>
+</div>
+<p>For each campaign, I calculate the expected counts of the 2 x 3
+contingency table made by cross tabulating gender by churn and then
+check if each expected count is larger than 5. This allows me to check
+which categories to test using the chi-square test.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">WITH</span> <span class="n">test_cats</span> <span class="n">AS</span> <span class="p">(</span>
+        <span class="n">SELECT</span> <span class="n">DISTINCT</span> <span class="n">campaign</span>
+        <span class="p">,</span> <span class="n">gender</span>
+
+        <span class="n">FROM</span> <span class="p">(</span>
+            <span class="n">SELECT</span> <span class="n">campaign</span>
+            <span class="p">,</span> <span class="n">gender</span>
+            <span class="p">,</span> <span class="n">COUNT</span><span class="p">(</span><span class="n">churn_flag</span><span class="p">)</span> <span class="n">OVER</span> <span class="p">(</span><span class="n">PARTITION</span> <span class="n">BY</span> <span class="n">campaign</span><span class="p">,</span> <span class="n">gender</span> <span class="p">)</span>
+                <span class="o">*</span> <span class="n">SUM</span><span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">churn_flag</span><span class="p">)</span> <span class="n">OVER</span> <span class="p">(</span><span class="n">PARTITION</span> <span class="n">BY</span> <span class="n">campaign</span><span class="p">)</span>
+                <span class="o">/</span> <span class="n">COUNT</span><span class="p">(</span><span class="n">churn_flag</span><span class="p">)</span> <span class="n">OVER</span> <span class="p">(</span><span class="n">PARTITION</span> <span class="n">BY</span> <span class="n">campaign</span><span class="p">)</span> <span class="n">AS</span> <span class="n">expected_stay</span>
+            <span class="p">,</span> <span class="n">COUNT</span><span class="p">(</span><span class="n">churn_flag</span><span class="p">)</span> <span class="n">OVER</span> <span class="p">(</span><span class="n">PARTITION</span> <span class="n">BY</span> <span class="n">campaign</span><span class="p">,</span> <span class="n">gender</span> <span class="p">)</span>
+                <span class="o">*</span> <span class="n">SUM</span><span class="p">(</span><span class="n">churn_flag</span> <span class="p">)</span> <span class="n">OVER</span> <span class="p">(</span><span class="n">PARTITION</span> <span class="n">BY</span> <span class="n">campaign</span><span class="p">)</span>
+                <span class="o">/</span> <span class="n">COUNT</span><span class="p">(</span><span class="n">churn_flag</span><span class="p">)</span> <span class="n">OVER</span> <span class="p">(</span><span class="n">PARTITION</span> <span class="n">BY</span> <span class="n">campaign</span><span class="p">)</span> <span class="n">AS</span> <span class="n">expected_churn</span>
+
+            <span class="n">FROM</span> <span class="n">cust_db</span>
+        <span class="p">)</span>
+
+        <span class="n">WHERE</span> <span class="n">expected_stay</span> <span class="o">&gt;</span> <span class="mi">5</span>
+            <span class="n">AND</span> <span class="n">expected_churn</span> <span class="o">&gt;</span> <span class="mi">5</span>
+<span class="p">)</span>
+
+<span class="o">...</span>
+</pre></div>
+</div>
+<p>Next, I run the chi-square tests on the raw data selecting which lines
+to take using those identified in the previous step.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">...</span>
+
+<span class="p">,</span> <span class="n">chisq_results</span> <span class="n">AS</span> <span class="p">(</span>
+        <span class="n">SELECT</span> <span class="n">db</span><span class="o">.</span><span class="n">campaign</span>
+        <span class="p">,</span> <span class="nb">round</span><span class="p">(</span> <span class="n">STATS_CROSSTAB</span><span class="p">(</span><span class="n">db</span><span class="o">.</span><span class="n">gender</span><span class="p">,</span> <span class="n">db</span><span class="o">.</span><span class="n">churn_flag</span><span class="p">,</span> <span class="s1">&#39;CHISQ_OBS&#39;</span><span class="p">),</span> <span class="mi">2</span> <span class="p">)</span> <span class="n">AS</span> <span class="n">chi_squared</span>
+        <span class="p">,</span> <span class="nb">round</span><span class="p">(</span> <span class="n">STATS_CROSSTAB</span><span class="p">(</span><span class="n">db</span><span class="o">.</span><span class="n">gender</span><span class="p">,</span> <span class="n">db</span><span class="o">.</span><span class="n">churn_flag</span><span class="p">,</span> <span class="s1">&#39;CHISQ_SIG&#39;</span><span class="p">),</span> <span class="mi">5</span> <span class="p">)</span> <span class="n">AS</span> <span class="n">p_value</span>
+
+        <span class="n">FROM</span> <span class="n">cust_db</span> <span class="n">db</span>
+
+        <span class="n">RIGHT</span> <span class="n">JOIN</span> <span class="n">test_cats</span> <span class="n">cat</span>
+            <span class="n">ON</span> <span class="n">db</span><span class="o">.</span><span class="n">campaign</span> <span class="o">=</span> <span class="n">cat</span><span class="o">.</span><span class="n">campaign</span>
+                <span class="n">AND</span> <span class="n">db</span><span class="o">.</span><span class="n">gender</span> <span class="o">=</span> <span class="n">cat</span><span class="o">.</span><span class="n">gender</span>
+
+       <span class="n">GROUP</span> <span class="n">BY</span> <span class="n">db</span><span class="o">.</span><span class="n">campaign</span>
+<span class="p">)</span>
+
+<span class="o">...</span>
+</pre></div>
+</div>
+<p>Finally, the last step allows us to identify which gender categories
+have been included in the final test. This returns a table showing the
+chi-square test statistic and the associated p-value for two tests.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">...</span>
+
+<span class="n">SELECT</span> <span class="n">res</span><span class="o">.</span><span class="n">campaign</span>
+<span class="p">,</span> <span class="n">LISTAGG</span><span class="p">(</span><span class="n">cat</span><span class="o">.</span><span class="n">gender</span><span class="p">,</span> <span class="s1">&#39;, &#39;</span><span class="p">)</span> <span class="n">WITHIN</span> <span class="n">GROUP</span> <span class="p">(</span><span class="n">ORDER</span> <span class="n">BY</span> <span class="n">cat</span><span class="o">.</span><span class="n">gender</span><span class="p">)</span> <span class="n">AS</span> <span class="n">gender</span>
+<span class="p">,</span> <span class="n">res</span><span class="o">.</span><span class="n">chi_squared</span>
+<span class="p">,</span> <span class="n">res</span><span class="o">.</span><span class="n">p_value</span>
+
+<span class="n">FROM</span> <span class="n">chisq_results</span> <span class="n">res</span>
+
+<span class="n">LEFT</span> <span class="n">JOIN</span> <span class="n">test_cats</span> <span class="n">cat</span>
+    <span class="n">ON</span> <span class="n">res</span><span class="o">.</span><span class="n">campaign</span> <span class="o">=</span> <span class="n">cat</span><span class="o">.</span><span class="n">campaign</span>
+
+<span class="n">GROUP</span> <span class="n">BY</span> <span class="n">res</span><span class="o">.</span><span class="n">campaign</span><span class="p">,</span> <span class="n">chi_squared</span><span class="p">,</span> <span class="n">p_value</span>
+
+<span class="n">ORDER</span> <span class="n">BY</span> <span class="mi">1</span>
+<span class="p">;</span>
+</pre></div>
+</div>
+<p>The results for my data are below. We see that there are tests carried
+out for only two campaigns: ABC and one for DEF. The campaign XYZ was
+excluded when testing assumptions as well as the ‘other’ gender.</p>
+<a class="reference internal image-reference" href="../../_images/chisquare.PNG"><img alt="../../_images/chisquare.PNG" class="align-center" src="../../_images/chisquare.PNG" style="width: 400px;" /></a>
+<p>Since, there are multiple tests we need to take into account the
+increased risk of getting a false positive. To do this, I used the
+Bonferroni correction in my real-world case. This particular method is
+contentious and has been criticised as being overly conservative. I used
+this as my starting point because it is simple to implement then since
+the null hypotheseses were rejected even with an overly conservative
+adjusted alpha, I didn’t see the need to investigate any of the other
+options available. Working in the private sector with much more work
+than hours in the day has led me to look for simple to understand, easy
+to implement solutions which do the job and that I can justify.</p>
+<p>The Bonferroni corrected <span class="math notranslate nohighlight">\(\alpha\)</span>, for p-values <span class="math notranslate nohighlight">\(p_{i}\)</span>, is <span class="math notranslate nohighlight">\(\frac{\alpha}{NBtests}\)</span>. So starting with an
+<span class="math notranslate nohighlight">\(\alpha\)</span> of 5% and two tests, the adjusted alpha is 0.05/2 = 0.025 and we reject
+the null hypothesis for each <span class="math notranslate nohighlight">\(p_i\)</span> &lt; 0.025.</p>
+<p>In my example above, the p-values are 0 to 5 decimal places so we can
+safely reject the null hypothesis that gender and churn is independent
+for both of the campaigns tested.</p>
+</section>
+
+<div class="section">
+    
+
+<div class="section">
+  <span style="float: left">
+     Previous:
+    
+    <a href="../lotkavolterra/">
+       Lotka-Volterra for the NZ Electricity Market
+    </a>
+    
+  </span>
+  <span>&nbsp;</span>
+  <span style="float: right">
+     Next: 
+    <a href="../mlbox/">
+      MLBox 
+    </a>
+    
+  </span>
+</div>
+  
+</div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../"></a></h1>
+
+
+
+
+
+
+
+
+  
+<h2>
+   
+  27 April 2020 
+</h2>
+
+<ul>
+   
+<li id="author">
+  <span
+    >Author:</span
+  >
+   
+  <a href="../../blog/author/keri-sime/">Keri Sime</a>  
+</li>
+     
+</ul>
+
+<h3>
+  <a href="../../blog/">Recent Posts</a>
+</h3>
+<ul>
+   
+  <li>
+    <a href="../spatialDemo/"
+      >25 April - Spatial Demo</a
+    >
+  </li>
+  
+  <li>
+    <a href="../shipSchedule/"
+      >15 June - Scheduling Ships</a
+    >
+  </li>
+  
+  <li>
+    <a href="../projMgmnt/"
+      >15 April - Managing a Machine Learning Project</a
+    >
+  </li>
+  
+  <li>
+    <a href="../mlbox/"
+      >30 October - MLBox</a
+    >
+  </li>
+  
+  <li>
+    <a href="../lotkavolterra/"
+      >11 November - Lotka-Volterra for the NZ Electricity Market</a
+    >
+  </li>
+  
+</ul>
+
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search/" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2022, Keri Sime.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 5.0.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../../_sources/posts/chisquare.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

@@ -12,8 +12,9 @@ individual machine learning algorithms. These methods build multiple
 models, such as decision trees, and combine the decisions of the
 individual models by either averaging for a continuous output or through
 a majority vote for classification tasks. The idea is that by combining
-weak models of the same type, we can improve performance. The weak
-models must be sufficiently different to improve the overall performance
+weak models of the same type, we can improve performance. 
+
+The weak models must be sufficiently different to improve the overall performance
 of the ensemble. For example, *boosted tree* algorithms incrementally
 build an ensemble of decision trees by training new trees with an
 emphasis on the individuals that were previously misclassified. Another

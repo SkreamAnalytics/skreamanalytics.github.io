@@ -1,0 +1,192 @@
+.. post:: April 15, 2021
+   :author: Keri Sime
+
+Managing a Machine Learning Project
+====================================
+
+There is a plethora of data science blog posts, including my own, which
+demonstrate how to create a machine learning (ML) model. Generally, they
+cover how to import the data, split it into to test and train datasets,
+fit the model then make predictions and evaluate the quality. This is
+all very well but the challenging part, and what you spend most of your
+time doing, is setting up the project and preparing the data. Not to
+mention the process of working with stakeholders and ideally monitoring
+ongoing performance.
+
+Traditionally I haven’t been one for doing a lot of planning before
+starting a project. I’d just grab the data and get coding. However, I’ve
+now been burnt just enough times to now take planning seriously. It’s
+unrealistic to expect to have a useable product after having a one-line
+request from your manager, grabbing some data and then coding something
+up. To this effect, I’ve put a few steps below which should help ensure
+that the modelling done is firstly useable and secondly done a minumum
+number of times. I work in marketing so the examples used relate to
+marketing use cases.
+
+Step 1 - Establish the Business Case
+------------------------------------
+
+It is essential to really understand what is needed by the business and
+if machine learning is even required. If a rules based model can do the
+job then use this. My approach is to employ the simplest techniques
+available to me which saves the business time and resources. Also,
+stakeholders are more likely to trust and use something more
+understandable. Furthermore, when you move on the person that inherits
+your work may not have your same advanced skillset so will struggle to
+maintain it. Generally, it’s important to keep in mind that the
+investment in any one project needs to be consumerate with the expected
+business benefit.
+
+To establish the needs of the business you’re going to have to get out
+there and consult with your stakeholders. The work you are doing should
+help them improve their outcomes which they understand through and
+through. To be blunt, if you are designing period products then you need
+to talk to someone who has a period. Same goes in business, don’t assume
+you know how it works. Also, you need stakeholder support to get your
+project rolled out. It’s much easier to get your work accepted if they
+have been consulted and given input from the start.
+
+So what do you need from the stakeholders? You need to understand the
+wider business context, the specific problem in detail and how the model
+will actually be used to fix this problem. For example, will a churn
+model feed into a process for targeting new customers or for retention
+purposes? If you’re replacing an existing model then look at what has
+already been done and how it preforms before you get started. However,
+just because there is something to refer to, don’t neglect to go back
+and talk to your stakeholders as the current solution might not be
+suitable.
+
+On the flip side, don’t blindly let the business tell you what they
+need. You might be dealing with someone that has been reading some hype
+on the internet and think that they need such-and-such a model using
+such-and-such data. In this case, it’s important to probe and ask the
+person really specific questions about what they are trying to achieve
+and explain to them why your approach will do the job if it’s different.
+
+At this stage you should also establish any pay-off matrices. Having a
+relatively too high cost associated with a wrong decision may render an
+‘average’ quality model useless. Or in some cases a very low cost of
+getting it wrong might mean that there is no point even doing the
+modelling.
+
+Step 2 - Frame the Project
+--------------------------
+
+How are you actually going to set the model up? If you are trying to
+predict customer churn, for example, you’ll have to choose a time period
+over which they churn. Are you looking at, say, 3-month or 12-month
+churn rates? Also, think about what data you’re going to use to train
+on. Are you going to use the last 12 months or the last 5 years? If
+you’re using the last 5 years, you need to consider if there have been
+any changes that could impact customer behaviour over that period. In
+that case, you might need to shorten the period over which you collect
+the training data.
+
+You need to determine which data you’re going to use and how you’re
+going to access it. You may need to look into purchasing some data or it
+might just take time to get access to data which is sitting somewhere
+inaccessible. There’s also the option of government data including
+census data and other open source datasets. When choosing data you need
+to think about the timing of the availability for the prediction
+dataset. If you are modelling churn then you don’t want to include
+information from the phone call which was made at the point of churn. Or
+if you data source has unreliable delivery times it may not be suitable.
+
+It’s important to consider the legal as well as the ethical implications
+of using certain data sources. Just because it is legal, it doesn’t mean
+it’s a good idea to use it. If you’re using your customer data you will
+need to look at the Terms & Conditions they’ve agreed to but you also
+need to consider the national legal framework you’re operating under.
+Many external data sources come with Terms & Conditions as well. For the
+ethics, you’ll have your own view point but it’s important to liaise
+with your stakeholders and abide by company policy.
+
+Once you have framed the project, I encourage you to actually explain
+this to someone else. The process of explaining the project, even in an
+email, forces you to really think through what you are doing. Also, this
+person might find a hole in your thinking. It’s better to find out now
+then after you’ve put in weeks of work.
+
+Step 3 - Prepare the Data
+-------------------------
+
+Once you’ve collected the data, do exploratory data analysis to check
+the data quality and understand the distribution of the variables. This
+will save you having to redo the modelling process later when you
+realise the input data quality is causing unexpected results. If there
+are too many null values then don’t use it, if there is little
+variability in the data then it’s not going to be very useful. You don’t
+need the same level of data preparation as you would for a statistical
+model but I see little point inlcuding poor quality data especailly if
+it is expensive or difficult to collect. Also, looking at the
+distribution of the variables may indicate if it is worth applying a
+power transformation so that data is less skewed.
+
+Some platforms will handle null values but I think that you should
+handle null values yourself as you will be able to do this in a nuanced
+way that the platform cannot. So for example, if you have location based
+data, impute relative to location. Think property values - land value
+will be similar in similar areas. This is better than the median land
+value being imputed across the whole country. Or you can use census data
+to impute missing data. For example, age can be replaced with median age
+from the census in a given area. Or if you want to impute missing
+information about pensions in census data then you could use a simple
+linear regression model using age as an input variable.
+
+Step 4 - Fit and Evaluate the Model
+-----------------------------------
+
+You’re now ready for the fun bit but don’t be surprised if you end up
+cycling back into other steps. Make sure you measure the impact on the
+final business outcome not just checking the perfomance on the test
+dataset. So for example, if your model leads to excluding leads from
+aqcuisition lists then you want to know how many leads will be excluded.
+If it’s too many then the sales agents won’t have anyone to call!
+
+If the model performance is poor, you can fine tune the parameters but
+this can only do so much. You can also consider creating a simpler
+model. So, for example, instead of trying to predict when a customer
+goes into bad debt, try to predict simply if they go into bad debt at
+all. You may also have to look at sourcing some more data.
+
+Before sharing your model with the business, it’s a good idea to get a
+detailed peer review of your model including the data preparation
+stages. Looking through other people’s work, I’ve sometimes been
+surprised by errors made that would have been picked up if someone else
+had had input in the project. We all make mistakes and as much as it’s
+hard to take criticsm, I’d rather that then roll out a poor quality
+model that costs the business money. Plus it takes some pressure off
+yourself as you’ve got someone else taking at least some of the
+responsiblity for the project.
+
+Another consideration is using A/B testing. Depending on the project,
+this may be a useful step in the evaluation process.
+
+Step 5 - Present the Model to Stakeholders
+------------------------------------------
+
+Present the model and its impacts to your stakeholders before rolling
+anything out. If you have stayed in touch with them through out the
+project then there won’t be any big surprises and therefore pushback.
+They won’t be interested in what algorithm you have run but they will be
+interested in how deploying the model will affect them and their
+objectives. So keep it light on the data science jargon and present it
+relative to the business context and how it will affect business
+outcomes.
+
+Step 5 - Deploy and Monitor the Model
+-------------------------------------
+
+Simply deploying the model is not enough, performance needs to be
+monitored over time. Also, the model itself will need to be refreshed
+periodically. The frequency of refreshing the model will depend on the
+business case and any changes in the underlying context.
+
+Conclusion
+----------
+
+I hope this post provides some food for thought and help you to
+streamline your modelling process. This steps above clearly have a
+marketing bent but no doubt there is overlap in other domains. It may
+even be worth distilling this into a checklist, keeping it relevant to
+your particular context.

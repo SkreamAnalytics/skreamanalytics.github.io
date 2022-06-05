@@ -1,0 +1,432 @@
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+    <title>Lotka-Volterra for the NZ Electricity Market &#8212;   documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css" />
+    <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <link rel="author" title="About these documents" href="../../about/" />
+    <link rel="index" title="Index" href="../../genindex/" />
+    <link rel="search" title="Search" href="../../search/" /> 
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+  
+<style type="text/css">
+  ul.ablog-archive {
+    list-style: none;
+    overflow: auto;
+    margin-left: 0px;
+  }
+  ul.ablog-archive li {
+    float: left;
+    margin-right: 5px;
+    font-size: 80%;
+  }
+  ul.postlist a {
+    font-style: italic;
+  }
+  ul.postlist-style-disc {
+    list-style-type: disc;
+  }
+  ul.postlist-style-none {
+    list-style-type: none;
+  }
+  ul.postlist-style-circle {
+    list-style-type: circle;
+  }
+</style>
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+             <section id="lotka-volterra-for-the-nz-electricity-market">
+<h1>Lotka-Volterra for the NZ Electricity Market<a class="headerlink" href="#lotka-volterra-for-the-nz-electricity-market" title="Permalink to this heading">¶</a></h1>
+<p>The <em>competitive Lotka-Volterra equations</em> model population dynamics of
+species competing for a common resource. Here the model is applied to
+the NZ electricity market assuming that each population consists of the
+number of electricity connections (individuals) for a given retailer
+(species) competing for the same pool of customers (the common
+resource). Note that losing or gaining a customer can impact more than
+one individual electricity connection.</p>
+<p>In this model, species have an intrinsic growth rate and their
+competitors have a strictly negative impact. It is assumed that
+population growth follows a logistic growth curve and so a carrying
+capacity is incorporated. This is in contrast to the more widely known
+<em>Lotka-Volterra</em> or <em>predator-prey equations</em> which assume populations
+have exponential growth.</p>
+<p>I’ve used to Python 3.6.4 to implement the model in Jupyter notebook.</p>
+<section id="the-lotka-volterra-system">
+<h2>The Lotka-Volterra system<a class="headerlink" href="#the-lotka-volterra-system" title="Permalink to this heading">¶</a></h2>
+<p>The species growth (decay) equation for each of the <span class="math notranslate nohighlight">\(n\)</span> species is:</p>
+<div class="math notranslate nohighlight">
+\[\frac{ dx_i }{ dt } = x_i (1 - \frac{ \sum_{ j = 1} ^ n a_{ ij } x_j} { K_i} )\]</div>
+<p>Where <span class="math notranslate nohighlight">\(x_i\)</span> is the size of the <span class="math notranslate nohighlight">\(i^{th}\)</span> population, <span class="math notranslate nohighlight">\(r_i\)</span> its intrinsic growth rate and</p>
+<p><span class="math notranslate nohighlight">\(K_i\)</span> its carrying capacity. The <span class="math notranslate nohighlight">\(a_{ij}\)</span></p>
+<p>are the interactions between different species.</p>
+<p>Since <span class="math notranslate nohighlight">\(a_{ij}&gt;0 ~for~all~ 1 \neq i,j \neq n\)</span> each species also competes with itself. In this example we can
+consider that once nearing carrying capacity, the existing connections
+will reduce the ability to grow further due to market constraints.</p>
+<p>We assume <span class="math notranslate nohighlight">\(r_i&gt;0\)</span> and so in the absence of any competition we have:</p>
+<div class="math notranslate nohighlight">
+\[\frac{ dx_i }{ dt } = x_i r_i (1 - \frac{ a_{ii} x_i }{ K_i } )\]</div>
+<p>Therefore, the population will either remain at zero or stabilise at its
+carrying capacity <span class="math notranslate nohighlight">\(K_i\)</span> where <span class="math notranslate nohighlight">\(aii=1\)</span>.</p>
+<p>I want to to calculate and graph population sizes over time. In order to
+do this I’ll use the Runge-Kutta method (RK4), to solve it numerically.</p>
+<p>To simplify the carrying capacity calculation, I have assumed that the
+carrying capacity of each retailer is a third of the current market
+capacity. This allows for all of the retailers to continue to grow which
+will no doubt happen with ongoing population growth in NZ and also
+assumes that the electricity regulator is unlikely to allow any one
+retailer to get too large. However, it doesn’t take into account the
+limits of individual retailers to grow - if they don’t have the
+resources or capital to grow the carrying capacity will be lower nor
+does it take into account actual customer base growth. To improve the
+model, more research needs to be done on the market and individual
+retailers. Ideally it would evolve over time to better match reality.</p>
+</section>
+<section id="system-parameters">
+<h2>System parameters<a class="headerlink" href="#system-parameters" title="Permalink to this heading">¶</a></h2>
+<p>The major electricity retailers in NZ are, in size order, Genesis
+Energy, Contact Energy, Mercury NZ, Meridian Energy and Trustpower. The
+other retailers I have grouped together as ‘other’. I have sourced
+market share data (the number of electricity connections) from the
+Electricity Authority’s (EA) <a class="reference external" href="https://www.emi.ea.govt.nz/Retail/Reports/R_MSS_C?DateTo=20181231&amp;MarketSegment=All&amp;Percent=N&amp;RegionCode=NZ&amp;RegionType=NZ&amp;RetailEntity=RPC&amp;_si=_dr_DateTo%7C20181231,_dr_MarketSegment%7CAll,_dr_RegionCode%7CNZ,_dr_RegionType%7CNZ,_dr_RetailEntity%7CTrader,v%7C4">Market share
+snapshot</a>.
+While data on the gains and losses of connections comes from the
+<a class="reference external" href="https://www.emi.ea.govt.nz/Retail/Reports/1D1AHX?_si=v%7C3">Switching
+summary</a>
+also published by the EA.</p>
+<p>To calculate growth rates, <span class="math notranslate nohighlight">\(r_i\)</span>, I’ve calculated average monthly growth over the first half of 2019.
+Then I’ve solved a compounding interest formula to calculate the daily
+growth rates.</p>
+<p>For the interactions, <span class="math notranslate nohighlight">\(a_{ij}\)</span> where <span class="math notranslate nohighlight">\(i \neq j\)</span>, I’ve calculated the average monthly losses for the first half of 2019
+for retailer <span class="math notranslate nohighlight">\(i\)</span>. I’ve attributed the losses evenly (since I don’t know who they’re
+being lost to) across the <span class="math notranslate nohighlight">\((n-1)\)</span> competitors and then calculated loss rates, <span class="math notranslate nohighlight">\(l_{ij}\)</span>,
+relative to the average number of connections of the
+<span class="math notranslate nohighlight">\(j^{th}\)</span> competitor over the same period. Since the model applies competitor
+interactions relative to population growth, <span class="math notranslate nohighlight">\(r_i\)</span>, I’ve adjusted the losses by the populations growth rate so
+<span class="math notranslate nohighlight">\(a_{ij} = \frac{l_{ij}}{r_i}\)</span>. Otherwise we see that the interactions, <span class="math notranslate nohighlight">\(a_{ij}\)</span>, are so small that they
+barely impact the model and all populations tend toward their carrying capacity. Then I’ve again translated that into a daily rate.</p>
+</section>
+<section id="python-code">
+<h2>Python Code<a class="headerlink" href="#python-code" title="Permalink to this heading">¶</a></h2>
+<p>Import the libraries needed:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+</pre></div>
+</div>
+<p>Next, define the methods to be used starting with the competitive
+Lotka-Volterra equation. Note that ‘r’ and ‘x’ are vectors and ‘a’ is a
+matrix of the interactions. This avoids having to use a loop to sum each
+interaction. Note that the carrying capacities are accounted for in the
+interaction matrix ‘a’ to simplify the calculations and so the <span class="math notranslate nohighlight">\(K_i\)</span> are not explicitly defined.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Define the competitive Lotka-Volterra equation</span>
+
+<span class="k">def</span> <span class="nf">CLV</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">r</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">a</span><span class="p">):</span>
+    <span class="c1"># i = ith population</span>
+    <span class="c1"># r = vector of intrinsic growth (decay) rates</span>
+    <span class="c1"># x = vector of population sizes</span>
+    <span class="c1"># a = interaction matrix</span>
+
+    <span class="k">return</span> <span class="n">x</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">*</span> <span class="n">r</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="nb">sum</span><span class="p">(</span><span class="n">x</span><span class="o">*</span><span class="n">a</span><span class="p">[</span><span class="n">i</span><span class="p">]))</span>
+</pre></div>
+</div>
+<p>Next we define the Runge-Kutta method (RK4). Note that the notation x0
+and t0 do not related to the starting points of the whole model but
+starting points for the particular RK4 iteration.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Define the Runge-Kutta method for calculating the population after t0 + delta</span>
+
+<span class="k">def</span> <span class="nf">RK4</span><span class="p">(</span><span class="n">delta</span><span class="p">,</span> <span class="n">r</span><span class="p">,</span> <span class="n">x0</span><span class="p">,</span> <span class="n">a</span><span class="p">):</span>
+    <span class="c1"># i = ith population</span>
+    <span class="c1"># r = vector of intrinsic growth rates</span>
+    <span class="c1"># x0 = vector of population sizes at time t0</span>
+    <span class="c1"># a = interaction matrix</span>
+
+    <span class="n">n</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">r</span><span class="p">)</span> <span class="c1"># number of populations in competition</span>
+
+    <span class="c1"># initialise the ki which hold each incremental value</span>
+    <span class="n">k1</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+    <span class="n">k2</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+    <span class="n">k3</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+    <span class="n">k4</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="n">n</span><span class="p">):</span>
+        <span class="c1"># for each population calculate the value at increment k1</span>
+        <span class="n">k1</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">=</span> <span class="n">delta</span> <span class="o">*</span> <span class="n">CLV</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">r</span><span class="p">,</span> <span class="n">x0</span><span class="p">,</span> <span class="n">a</span><span class="p">)</span>
+
+    <span class="n">x1</span><span class="o">=</span> <span class="n">x0</span><span class="o">+</span><span class="n">k1</span><span class="o">/</span><span class="mi">2</span> <span class="c1"># population value to feed into next step</span>
+
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="n">n</span><span class="p">):</span>
+        <span class="c1"># for each population calculate the value at increment k2</span>
+        <span class="n">k2</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">=</span> <span class="n">delta</span> <span class="o">*</span> <span class="n">CLV</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">r</span><span class="p">,</span> <span class="n">x1</span><span class="p">,</span> <span class="n">a</span><span class="p">)</span>
+
+    <span class="n">x2</span><span class="o">=</span> <span class="n">x0</span><span class="o">+</span><span class="n">k2</span><span class="o">/</span><span class="mi">2</span> <span class="c1"># population value to feed into next step</span>
+
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="n">n</span><span class="p">):</span>
+        <span class="c1"># for each population calculate the value at increment k3</span>
+        <span class="n">k3</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">=</span> <span class="n">delta</span> <span class="o">*</span> <span class="n">CLV</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">r</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">a</span><span class="p">)</span>
+
+    <span class="n">x3</span><span class="o">=</span> <span class="n">x0</span><span class="o">+</span><span class="n">k3</span> <span class="c1"># population value to feed into next step</span>
+
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="n">n</span><span class="p">):</span>
+        <span class="c1"># for each population calculate the value at increment k4</span>
+        <span class="n">k4</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">=</span> <span class="n">delta</span> <span class="o">*</span> <span class="n">CLV</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">r</span><span class="p">,</span> <span class="n">x3</span><span class="p">,</span> <span class="n">a</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">x0</span> <span class="o">+</span> <span class="p">(</span><span class="n">k1</span> <span class="o">+</span> <span class="mi">2</span><span class="o">*</span><span class="n">k2</span> <span class="o">+</span> <span class="mi">2</span><span class="o">*</span><span class="n">k3</span> <span class="o">+</span> <span class="n">k4</span><span class="p">)</span><span class="o">/</span><span class="mi">6</span> <span class="c1">#values at time t + delta</span>
+</pre></div>
+</div>
+<p>Then set up the population parameters. Note that the last two columns of
+the interactions matrix are nearly identical because Trustpower and
+‘other’ had just about the same average number of connections for the
+first half of 2019.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Population parameters</span>
+
+<span class="c1"># List of retailers corresponding to each i</span>
+<span class="n">retailers</span> <span class="o">=</span> <span class="p">[</span> <span class="s1">&#39;Contact&#39;</span><span class="p">,</span><span class="s1">&#39;Genesis&#39;</span><span class="p">,</span> <span class="s1">&#39;Mercury&#39;</span><span class="p">,</span> <span class="s1">&#39;Meridian&#39;</span><span class="p">,</span> <span class="s1">&#39;other&#39;</span><span class="p">,</span> <span class="s1">&#39;Trustpower&#39;</span><span class="p">]</span>
+
+<span class="c1"># Electricity connections per retailer as at 30 June 2018</span>
+<span class="n">x0</span><span class="o">=</span> <span class="p">[</span><span class="mi">357574</span><span class="p">,</span> <span class="mi">447637</span><span class="p">,</span> <span class="mi">333568</span><span class="p">,</span> <span class="mi">222683</span><span class="p">,</span> <span class="mi">244903</span><span class="p">,</span> <span class="mi">230072</span><span class="p">]</span> <span class="c1">#starting values</span>
+
+<span class="c1"># Intrinsic growth rates</span>
+<span class="n">r</span><span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.000510837</span><span class="p">,</span> <span class="mf">0.000313337</span><span class="p">,</span> <span class="mf">0.000325357</span><span class="p">,</span> <span class="mf">0.000327255</span><span class="p">,</span> <span class="mf">0.001858452</span><span class="p">,</span> <span class="mf">0.000570492</span><span class="p">])</span>
+
+<span class="c1"># Assumed carrying capacities</span>
+<span class="n">k</span><span class="o">=</span><span class="nb">sum</span><span class="p">(</span><span class="n">x0</span><span class="p">)</span><span class="o">/</span><span class="mi">3</span>
+
+<span class="c1"># Interaction matrix</span>
+<span class="n">a</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span>   <span class="p">[</span> <span class="mf">1.0000</span><span class="p">,</span> <span class="mf">0.1581</span>  <span class="p">,</span><span class="mf">0.2089</span><span class="p">,</span> <span class="mf">0.3191</span> <span class="p">,</span> <span class="mf">0.3020</span><span class="p">,</span> <span class="mf">0.3075</span> <span class="p">],</span>
+                 <span class="p">[</span><span class="mf">0.3571</span><span class="p">,</span> <span class="mf">1.0000</span> <span class="p">,</span><span class="mf">0.3740</span> <span class="p">,</span> <span class="mf">0.5713</span> <span class="p">,</span> <span class="mf">0.5407</span> <span class="p">,</span> <span class="mf">0.5506</span><span class="p">],</span>
+                 <span class="p">[</span><span class="mf">0.2884</span><span class="p">,</span> <span class="mf">0.2287</span> <span class="p">,</span><span class="mf">1.0000</span> <span class="p">,</span> <span class="mf">0.4615</span> <span class="p">,</span> <span class="mf">0.4368</span> <span class="p">,</span> <span class="mf">0.4448</span><span class="p">],</span>
+                 <span class="p">[</span><span class="mf">0.1601</span> <span class="p">,</span> <span class="mf">0.1270</span><span class="p">,</span> <span class="mf">0.1678</span> <span class="p">,</span> <span class="mf">1.0000</span> <span class="p">,</span> <span class="mf">0.2426</span> <span class="p">,</span> <span class="mf">0.2471</span><span class="p">],</span>
+                 <span class="p">[</span><span class="mf">0.1021</span> <span class="p">,</span> <span class="mf">0.0810</span> <span class="p">,</span> <span class="mf">0.1069</span> <span class="p">,</span> <span class="mf">0.1633</span><span class="p">,</span> <span class="mf">1.0000</span> <span class="p">,</span> <span class="mf">0.1573</span><span class="p">],</span>
+                 <span class="p">[</span><span class="mf">0.1551</span>  <span class="p">,</span><span class="mf">0.1230</span><span class="p">,</span> <span class="mf">0.1625</span> <span class="p">,</span> <span class="mf">0.2483</span><span class="p">,</span> <span class="mf">0.2350</span> <span class="p">,</span> <span class="mf">1.0000</span><span class="p">]</span> <span class="p">])</span>
+
+<span class="c1"># Incorporate the carrying capacities into the interactions matrix</span>
+<span class="n">a</span><span class="o">=</span><span class="n">a</span><span class="o">/</span><span class="n">k</span>
+</pre></div>
+</div>
+<p>Followed by the time parameters. I’m running the model over 30 years.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Time period parameters</span>
+
+<span class="n">delta</span> <span class="o">=</span> <span class="mi">1</span> <span class="c1"># step size of 1 day</span>
+<span class="n">N</span><span class="o">=</span><span class="mi">30</span> <span class="o">*</span> <span class="mi">365</span> <span class="c1"># number of iterations corresponding to 30 years</span>
+
+<span class="c1"># Initialise the matrix holding the population sizes at each step</span>
+<span class="n">X</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">((</span><span class="n">x0</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">N</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="mi">6</span><span class="p">))))</span>
+</pre></div>
+</div>
+<p>The model is then applied using the Runge-Kutta method storing each days
+population sizes in the matrix ‘X’.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Calculate the population sizes</span>
+<span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">N</span><span class="p">):</span>
+        <span class="n">X</span><span class="p">[</span><span class="n">n</span><span class="p">]</span> <span class="o">=</span> <span class="n">RK4</span><span class="p">(</span><span class="n">delta</span><span class="p">,</span> <span class="n">r</span><span class="p">,</span> <span class="n">X</span><span class="p">[</span><span class="n">n</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">a</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Lastly the results are graphed.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1">#Plot the populations over time</span>
+
+<span class="c1"># Plot parameters</span>
+<span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span><span class="mi">10</span><span class="p">))</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">rcParams</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s1">&#39;font.size&#39;</span><span class="p">:</span> <span class="mi">16</span><span class="p">})</span>
+
+<span class="c1"># Plot the data</span>
+<span class="n">h</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="n">N</span><span class="p">),</span><span class="n">X</span><span class="p">)</span>
+
+<span class="c1"># Set the ticks and labels</span>
+<span class="n">ticks</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">N</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="mi">365</span><span class="p">)</span>
+<span class="n">labels</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="n">ticks</span><span class="o">.</span><span class="n">size</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xticks</span><span class="p">(</span><span class="n">ticks</span><span class="p">,</span> <span class="n">labels</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
+
+<span class="c1"># Add vertical lines</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">gca</span><span class="p">()</span><span class="o">.</span><span class="n">xaxis</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="c1"># Add title and labels</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;Evolution of the NZ electricity market&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;years&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;number of electricity connections&#39;</span><span class="p">)</span>
+
+<span class="c1"># Add legend</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">retailers</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>As you will see below, the ‘other’ grouping grows dramatically while the
+other retailers grow or decline more gradually. This is due to ‘other’
+having a much higher intrinsic growth rate of 0.1654% daily or 82% per
+annum (versus Contact’s annual rate of 11%). In reality an annual rate
+of 82% rate would actually decrease over time as this rapid growth, due
+to more recent market entry, is not sustainable. However, it makes for
+an interesting graph.</p>
+<p>We see ‘other’ being impacted by the underlying logistic growth model as
+the population very gradually approaches its carrying capacity in year
+15. This is also unrealistic since this is a group of several smaller
+electricity retailers so they would not be bounded by the 33% market
+share assumption.</p>
+<p>Genesis and Mercury are hit hard by the growth of ‘other’ and this trend
+continues. Contact is also negatively affected but their population
+stabilises around 300K while it looks like Genesis is going for broke.
+Meanwhile Meridian and Trustpower increase in market share with
+Truspower overtaking Meridian in year 9.</p>
+<p>Although it is unlikely that this will be the trajectory of the market
+over the next 30 years, this graph allows us to analyse the impact of
+competitors on each other and we can deduce that Genesis is likely to be
+hardest hit by the growth of the new market entrants. In reality,
+Genesis and Mercury would change strategy in order to reverse these
+trends.</p>
+<a class="reference internal image-reference" href="../../_images/lotkavolterra.PNG"><img alt="../../_images/lotkavolterra.PNG" src="../../_images/lotkavolterra.PNG" style="width: 600px;" /></a>
+<p>In conclusion, it has been an interesting project to apply the
+competitive Lotka-Volterra equations to the NZ electricity market. As
+mentioned, the parameters are not particularly accurate and so it would
+be interesting to do some market research to more accurately set the
+modelling parameters and then analyse the impact of changes in these
+parameters on the market.</p>
+</section>
+</section>
+
+<div class="section">
+    
+
+<div class="section">
+  <span style="float: left">
+     Previous:
+    
+    <a href="../memoryCraft/">
+       Memory Craft
+    </a>
+    
+  </span>
+  <span>&nbsp;</span>
+  <span style="float: right">
+     Next: 
+    <a href="../chisquare/">
+      Chi-square Testing in Oracle SQL 
+    </a>
+    
+  </span>
+</div>
+  
+</div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../"></a></h1>
+
+
+
+
+
+
+
+
+  
+<h2>
+   
+  11 November 2019 
+</h2>
+
+<ul>
+   
+<li id="author">
+  <span
+    >Author:</span
+  >
+   
+  <a href="../../blog/author/keri-sime/">Keri Sime</a>  
+</li>
+     
+</ul>
+
+<h3>
+  <a href="../../blog/">Recent Posts</a>
+</h3>
+<ul>
+   
+  <li>
+    <a href="../spatialDemo/"
+      >25 April - Spatial Demo</a
+    >
+  </li>
+  
+  <li>
+    <a href="../shipSchedule/"
+      >15 June - Scheduling Ships</a
+    >
+  </li>
+  
+  <li>
+    <a href="../projMgmnt/"
+      >15 April - Managing a Machine Learning Project</a
+    >
+  </li>
+  
+  <li>
+    <a href="../mlbox/"
+      >30 October - MLBox</a
+    >
+  </li>
+  
+  <li>
+    <a href="../chisquare/"
+      >27 April - Chi-square Testing in Oracle SQL</a
+    >
+  </li>
+  
+</ul>
+
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search/" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2022, Keri Sime.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 5.0.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../../_sources/posts/lotkavolterra.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

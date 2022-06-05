@@ -1,4 +1,5 @@
 .. post:: Feb 27, 2018
+   :title: Support Vector Machines
    :author: Keri Sime
 
 Support Vector Machines
@@ -8,8 +9,9 @@ Theory
 ------
 
 The support vector machine (SVM) is a classification method which groups
-similar individuals into classes depending on their characteristics. The
-example below left shows 10 individuals classed either as positive (+)
+similar individuals into classes depending on their characteristics. 
+
+The example below left shows 10 individuals classed either as positive (+)
 or negative (-). The individuals can be divided into two classes by
 putting a straight line between them, they are linearly separable.
 However, several different lines can be fitted and we want to choose the

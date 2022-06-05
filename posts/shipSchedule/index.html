@@ -1,0 +1,370 @@
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+    <title>Scheduling Ships &#8212;   documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css" />
+    <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <link rel="author" title="About these documents" href="../../about/" />
+    <link rel="index" title="Index" href="../../genindex/" />
+    <link rel="search" title="Search" href="../../search/" /> 
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+  
+<style type="text/css">
+  ul.ablog-archive {
+    list-style: none;
+    overflow: auto;
+    margin-left: 0px;
+  }
+  ul.ablog-archive li {
+    float: left;
+    margin-right: 5px;
+    font-size: 80%;
+  }
+  ul.postlist a {
+    font-style: italic;
+  }
+  ul.postlist-style-disc {
+    list-style-type: disc;
+  }
+  ul.postlist-style-none {
+    list-style-type: none;
+  }
+  ul.postlist-style-circle {
+    list-style-type: circle;
+  }
+</style>
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+             <section id="scheduling-ships">
+<h1>Scheduling Ships<a class="headerlink" href="#scheduling-ships" title="Permalink to this heading">¶</a></h1>
+<p>In a previous life I worked for a team importing bulk cargo into
+Australia. We had about 80 shipments a year discharging to a single
+berth. Working out which shipments to take and when was as complex task
+which I’ve remained fascinated by. At the time we used a custom SAP
+module to schedule ships but once the company was sold the scheduler
+ended up relying on Excel spreadsheets.</p>
+<p>In this post, I’ve used the <em>python-constraint</em> module to solve this
+problem. The actual implementation is straight forward but it’s the
+framing of the problem which is tricky. We have to correctly identify
+the variables, the domains and then the constraints. To demonstrate, I
+first solve a simplistic problem of choosing the discharge order of 4
+ships arriving over a 30-day period. The relatively long period means we
+have ample time to berth all of the ships. The second problem looks at
+scheduling several ships arriving over limited time windows with not
+enough berth availability to take all of the shipments.</p>
+<section id="simple-ordering-of-ships-discharging">
+<h2>Simple ordering of ships discharging<a class="headerlink" href="#simple-ordering-of-ships-discharging" title="Permalink to this heading">¶</a></h2>
+<p>Let’s suppose we have 4 ships, arriving over a 30-day period. We can
+only discharge one ship at a time and each ship takes 3 days to
+discharge. We define the problem as follows:</p>
+<ul class="simple">
+<li><p>our variables are ship_a, ship_b, ship_c, ship_d</p></li>
+<li><p>each ship can berth either on the 1st, 4th, 7th… (this is the domain)</p></li>
+</ul>
+<p>Programmatically this looks like the below, which produces 10,000
+possible solutions.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">constraint</span>
+<span class="kn">from</span> <span class="nn">constraint</span> <span class="kn">import</span> <span class="o">*</span>
+
+<span class="n">problem</span> <span class="o">=</span> <span class="n">constraint</span><span class="o">.</span><span class="n">Problem</span><span class="p">()</span>
+
+<span class="n">ships</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;ship_a&#39;</span><span class="p">,</span><span class="s1">&#39;ship_b&#39;</span><span class="p">,</span><span class="s1">&#39;ship_c&#39;</span><span class="p">,</span><span class="s1">&#39;ship_d&#39;</span><span class="p">]</span>
+
+<span class="k">for</span> <span class="n">ship</span> <span class="ow">in</span> <span class="n">ships</span><span class="p">:</span>
+    <span class="n">domain</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">30</span><span class="p">,</span><span class="mi">3</span><span class="p">)</span>
+    <span class="n">problem</span><span class="o">.</span><span class="n">addVariable</span><span class="p">(</span><span class="n">ship</span><span class="p">,</span> <span class="n">domain</span><span class="p">)</span>
+
+<span class="nb">len</span><span class="p">(</span><span class="n">problem</span><span class="o">.</span><span class="n">getSolutions</span><span class="p">())</span>
+</pre></div>
+</div>
+<p>We then add a constraint that only one ship can berth at a time.
+Reducing the possible solutions by nearly half to 5,040.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">problem</span><span class="o">.</span><span class="n">addConstraint</span><span class="p">(</span><span class="n">AllDifferentConstraint</span><span class="p">(),</span> <span class="n">ships</span><span class="p">)</span>
+<span class="n">problem</span><span class="o">.</span><span class="n">getSolutions</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>You can see below that ship_d does not have the same value as any of the
+previous ships.</p>
+<a class="reference internal image-reference" href="../../_images/print_solutions.PNG"><img alt="../../_images/print_solutions.PNG" src="../../_images/print_solutions.PNG" style="width: 600px;" /></a>
+<p>I also add an arrival constraint. Since ship_a won’t actually arrive
+before the 5th. This reduces the number of solutions to 4,032.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">problem</span><span class="o">.</span><span class="n">addConstraint</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="mi">5</span> <span class="o">&lt;</span> <span class="n">x</span><span class="p">,</span> <span class="p">([</span><span class="s1">&#39;ship_a&#39;</span><span class="p">]))</span>
+</pre></div>
+</div>
+<p>Of the remaining solutions we want to choose the best solution based on
+an equation we want to minimise or maximise. For this particular
+problem, we want all of the ships to berth as soon as possible so the
+equation to minimise is the sum of berthing dates.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">min_delay</span> <span class="o">=</span> <span class="mi">999</span>
+<span class="n">solution_found</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="n">solutions</span> <span class="o">=</span> <span class="n">problem</span><span class="o">.</span><span class="n">getSolutions</span><span class="p">()</span>
+
+<span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">solutions</span><span class="p">:</span>
+    <span class="n">current_delay</span> <span class="o">=</span> <span class="n">s</span><span class="p">[</span><span class="s1">&#39;ship_a&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="n">s</span><span class="p">[</span><span class="s1">&#39;ship_b&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="n">s</span><span class="p">[</span><span class="s1">&#39;ship_c&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="n">s</span><span class="p">[</span><span class="s1">&#39;ship_d&#39;</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">current_delay</span> <span class="o">&lt;</span> <span class="n">min_delay</span><span class="p">:</span>
+        <span class="n">min_delay</span> <span class="o">=</span> <span class="n">current_delay</span>
+        <span class="n">solution_found</span> <span class="o">=</span> <span class="n">s</span>
+</pre></div>
+</div>
+<p>This gives us solution_found = {‘ship_a’: 10, ‘ship_b’: 7, ‘ship_c’: 4,
+‘ship_d’: 1} So <em>ship d</em> would berth on the 1st, <em>ship c</em> on the 4th,
+<em>ship b</em> on the 7th and <em>ship a</em> on the 10th. This is a rather
+simplisitc scenario as in reality there are more limits to berthing
+timing and using a domain as multiples of 3 may unitentionally leave the
+berth empty will a ship is waiting off the port. However, it does
+demonstrate the assignment of variables, domains and constraints - both
+custom and inbuilt.</p>
+</section>
+<section id="ordering-of-ships-with-limited-berth-availability">
+<h2>Ordering of ships with limited berth availability<a class="headerlink" href="#ordering-of-ships-with-limited-berth-availability" title="Permalink to this heading">¶</a></h2>
+<p>In the second scenario, we cannot discharge all of the ships and must
+choose both which ships and when to unload. Also, the ships, once
+arrived in port, have a limited period in which to commence discharge
+before penalties are applied. Finally, here instead of miminising the
+arrival dates, we will maximise the value of the shipments.</p>
+<p>For this scenario: * choice of 8 shipments * berth availability to
+<em>start</em> discharging between the 10th and the 19th of the month * each
+shipment takes 3 days to discharge, * 5-day laycans meaning that
+contractually there is a 5-day window to commence discharing after
+arrival</p>
+<p>I have a csv file containing ship names, the laycan openings, closings
+and the values of the shipments to which you can add as many zeros as
+you wish to get something realistic. Note that I want to start
+discharging at the opening of the laycan to minimise the chances of
+running late and therefore incurring penalties.</p>
+<a class="reference internal image-reference" href="../../_images/shipping_list.PNG"><img alt="../../_images/shipping_list.PNG" src="../../_images/shipping_list.PNG" style="width: 400px;" /></a>
+<p>I start by extracting the relevant information.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ships</span> <span class="o">=</span> <span class="n">shipping_list</span><span class="o">.</span><span class="n">ship_name</span>
+<span class="n">laycan_open</span> <span class="o">=</span> <span class="n">shipping_list</span><span class="o">.</span><span class="n">laycan_open</span>
+<span class="n">laycan_close</span> <span class="o">=</span> <span class="n">shipping_list</span><span class="o">.</span><span class="n">laycan_close</span>
+<span class="n">last_day</span> <span class="o">=</span> <span class="mi">19</span>
+</pre></div>
+</div>
+<p>We then create the problem and add the domains for each shipment with
+the ship able to berth any day from its laycan opening since they all
+open on or after the 10th until the earlier of its laycan closing or the
+19th. Since not every ship will be able to berth, I add to each domain a
+0 indicating that the shipment will not be scheduled. Note that here I
+do not have the domains as multiples of 3 as we may wish to leave the
+berth empty for 1-2 days. This could happen if, for example, a more
+valuable shipment arrives the day after a less valuable shipment.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">problem</span> <span class="o">=</span> <span class="n">constraint</span><span class="o">.</span><span class="n">Problem</span><span class="p">()</span>
+
+<span class="k">for</span> <span class="n">ship</span><span class="p">,</span> <span class="n">layo</span><span class="p">,</span> <span class="n">layc</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">ships</span><span class="p">,</span> <span class="n">laycan_open</span><span class="p">,</span> <span class="n">laycan_close</span><span class="p">):</span>
+    <span class="n">domain</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">layo</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="n">layc</span><span class="p">,</span> <span class="n">last_day</span><span class="p">),</span> <span class="mi">1</span><span class="p">))</span>
+    <span class="n">domain</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">domain</span>
+    <span class="n">problem</span><span class="o">.</span><span class="n">addVariable</span><span class="p">(</span><span class="n">ship</span><span class="p">,</span> <span class="n">domain</span><span class="p">)</span>
+
+<span class="nb">len</span><span class="p">(</span><span class="n">problem</span><span class="o">.</span><span class="n">getSolutions</span><span class="p">())</span>
+</pre></div>
+</div>
+<p>This time we have 187,500 possible solutions. With a sample shown below:</p>
+<a class="reference internal image-reference" href="../../_images/print_solutions_2.PNG"><img alt="../../_images/print_solutions_2.PNG" src="../../_images/print_solutions_2.PNG" style="width: 200px;" /></a>
+<p>Again we want to remove the duplicate berthing dates. However, we want
+to keep the duplicate zeros. This means we need to write a custom
+constraint function. This function reduces the number of solutions by
+86% to 27,131.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">unique_constraint</span><span class="p">(</span><span class="n">a</span><span class="p">,</span><span class="n">b</span><span class="p">,</span><span class="n">c</span><span class="p">,</span><span class="n">d</span><span class="p">,</span><span class="n">e</span><span class="p">,</span><span class="n">f</span><span class="p">,</span><span class="n">g</span><span class="p">,</span><span class="n">h</span><span class="p">):</span>
+    <span class="n">solution</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">a</span><span class="p">,</span><span class="n">b</span><span class="p">,</span><span class="n">c</span><span class="p">,</span><span class="n">d</span><span class="p">,</span><span class="n">e</span><span class="p">,</span><span class="n">f</span><span class="p">,</span><span class="n">g</span><span class="p">,</span><span class="n">h</span><span class="p">])</span>
+    <span class="n">solution</span> <span class="o">=</span> <span class="n">solution</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">nonzero</span><span class="p">(</span><span class="n">solution</span><span class="p">)]</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">solution</span><span class="p">))</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">solution</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">True</span>
+
+<span class="n">problem</span><span class="o">.</span><span class="n">addConstraint</span><span class="p">(</span><span class="n">unique_constraint</span><span class="p">,</span> <span class="nb">list</span><span class="p">(</span><span class="n">ships</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>We also need to add a constraint which allows for the discharge period.
+We do not want any ship berthing within 3 days of another. Using the
+below constraint we reduce the number of potential solutions to just
+383.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">occupied_constraint</span><span class="p">(</span><span class="n">a</span><span class="p">,</span><span class="n">b</span><span class="p">,</span><span class="n">c</span><span class="p">,</span><span class="n">d</span><span class="p">,</span><span class="n">e</span><span class="p">,</span><span class="n">f</span><span class="p">,</span><span class="n">g</span><span class="p">,</span><span class="n">h</span><span class="p">):</span>
+    <span class="n">solution</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">a</span><span class="p">,</span><span class="n">b</span><span class="p">,</span><span class="n">c</span><span class="p">,</span><span class="n">d</span><span class="p">,</span><span class="n">e</span><span class="p">,</span><span class="n">f</span><span class="p">,</span><span class="n">g</span><span class="p">,</span><span class="n">h</span><span class="p">])</span>
+    <span class="n">solution</span> <span class="o">=</span> <span class="n">solution</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">nonzero</span><span class="p">(</span><span class="n">solution</span><span class="p">)]</span> <span class="c1"># ignore 0s</span>
+    <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">solution</span><span class="p">:</span>
+        <span class="k">if</span> <span class="p">((</span><span class="n">s</span> <span class="ow">in</span> <span class="n">solution</span> <span class="o">+</span> <span class="o">-</span><span class="mi">2</span><span class="p">)</span> <span class="ow">or</span>
+            <span class="p">(</span><span class="n">s</span> <span class="ow">in</span> <span class="n">solution</span> <span class="o">+</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="ow">or</span>
+            <span class="p">(</span><span class="n">s</span> <span class="ow">in</span> <span class="n">solution</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="ow">or</span>
+            <span class="p">(</span><span class="n">s</span> <span class="ow">in</span> <span class="n">solution</span> <span class="o">+</span> <span class="mi">2</span><span class="p">)):</span>
+            <span class="k">return</span> <span class="kc">False</span>
+    <span class="k">return</span> <span class="kc">True</span>
+
+<span class="n">problem</span><span class="o">.</span><span class="n">addConstraint</span><span class="p">(</span><span class="n">occupied_constraint</span><span class="p">,</span> <span class="nb">list</span><span class="p">(</span><span class="n">ships</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>Finally, we choose the solution which maximises the potential value of
+the shipments discharged.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">solutions</span> <span class="o">=</span> <span class="n">problem</span><span class="o">.</span><span class="n">getSolutions</span><span class="p">()</span>
+
+<span class="n">values</span> <span class="o">=</span> <span class="n">shipping_list</span><span class="o">.</span><span class="n">value</span>
+<span class="n">max_value</span> <span class="o">=</span> <span class="mi">0</span>
+
+<span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">solutions</span><span class="p">:</span>
+    <span class="n">current_value</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="n">ship</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">ships</span><span class="p">,</span> <span class="n">values</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">s</span><span class="p">[</span><span class="n">ship</span><span class="p">]</span><span class="o">&gt;</span><span class="mi">0</span><span class="p">:</span>
+            <span class="n">current_value</span> <span class="o">=</span> <span class="n">current_value</span> <span class="o">+</span> <span class="n">value</span>
+
+    <span class="k">if</span> <span class="n">current_value</span> <span class="o">&gt;</span> <span class="n">max_value</span><span class="p">:</span>
+        <span class="n">max_value</span> <span class="o">=</span> <span class="n">current_value</span>
+        <span class="n">solution_found</span> <span class="o">=</span> <span class="n">s</span>
+</pre></div>
+</div>
+<p>The final solution berths the Jasmine Halo on the 12th, the Diamond Halo
+on the 15th and the Ruby Halo on the 18th. Since the very fist shipment
+was only worth a nominal 5, it was not selected to discharge even though
+this means that the berth sat empty for two days. Of course in the
+shipping world nothing ever goes to plan so depending on the situation
+we may choose to have ships arriving with a slight overlap to reduce the
+risk of berth sitting empty or, if costs of ships waiting at port are
+extrememly high, we may do the opposite and allow more days between
+discharging.</p>
+</section>
+</section>
+
+<div class="section">
+    
+
+<div class="section">
+  <span style="float: left">
+     Previous:
+    
+    <a href="../projMgmnt/">
+       Managing a Machine Learning Project
+    </a>
+    
+  </span>
+  <span>&nbsp;</span>
+  <span style="float: right">
+     Next: 
+    <a href="../spatialDemo/">
+      Spatial Demo 
+    </a>
+    
+  </span>
+</div>
+  
+</div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../"></a></h1>
+
+
+
+
+
+
+
+
+  
+<h2>
+   
+  15 June 2021 
+</h2>
+
+<ul>
+   
+<li id="author">
+  <span
+    >Author:</span
+  >
+   
+  <a href="../../blog/author/keri-sime/">Keri Sime</a>  
+</li>
+     
+</ul>
+
+<h3>
+  <a href="../../blog/">Recent Posts</a>
+</h3>
+<ul>
+   
+  <li>
+    <a href="../spatialDemo/"
+      >25 April - Spatial Demo</a
+    >
+  </li>
+  
+  <li>
+    <a href="../projMgmnt/"
+      >15 April - Managing a Machine Learning Project</a
+    >
+  </li>
+  
+  <li>
+    <a href="../mlbox/"
+      >30 October - MLBox</a
+    >
+  </li>
+  
+  <li>
+    <a href="../chisquare/"
+      >27 April - Chi-square Testing in Oracle SQL</a
+    >
+  </li>
+  
+  <li>
+    <a href="../lotkavolterra/"
+      >11 November - Lotka-Volterra for the NZ Electricity Market</a
+    >
+  </li>
+  
+</ul>
+
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search/" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2022, Keri Sime.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 5.0.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../../_sources/posts/shipSchedule.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

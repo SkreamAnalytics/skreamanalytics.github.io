@@ -1,0 +1,401 @@
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+    <title>XGBoost &#8212;   documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css" />
+    <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <link rel="author" title="About these documents" href="../../about/" />
+    <link rel="index" title="Index" href="../../genindex/" />
+    <link rel="search" title="Search" href="../../search/" /> 
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+  
+<style type="text/css">
+  ul.ablog-archive {
+    list-style: none;
+    overflow: auto;
+    margin-left: 0px;
+  }
+  ul.ablog-archive li {
+    float: left;
+    margin-right: 5px;
+    font-size: 80%;
+  }
+  ul.postlist a {
+    font-style: italic;
+  }
+  ul.postlist-style-disc {
+    list-style-type: disc;
+  }
+  ul.postlist-style-none {
+    list-style-type: none;
+  }
+  ul.postlist-style-circle {
+    list-style-type: circle;
+  }
+</style>
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+             <section id="xgboost">
+<h1>XGBoost<a class="headerlink" href="#xgboost" title="Permalink to this heading">¶</a></h1>
+<p><em>XGBoost</em> or <em>Extreme Gradient Boosting</em> is a decision tree ensemble
+method just like random forests. However, the construction of the forest
+is substaintially different. XGBoost is an additive model: an initial
+tree is trained then a second tree is trained to predict the errors of
+the initial tree, a third tree is then trained to predict the errors of
+the second tree and so on and so forth. The results of the trees are
+<em>added</em> together to make the final prediction. Whereas random forests
+take a majority vote of the forest, with each tree being trained on a
+sample of the input data.</p>
+<p>For all things XGBoost, the <a class="reference external" href="https://xgboost.readthedocs.io/en/latest/index.html">XGBoost documentation</a>
+has a comprehensive guide, from installation to utilisation and even a
+forum. However, for understanding the mathematics behind the model I
+actually found the explanation in this
+<a class="reference external" href="http://proceedings.mlr.press/v42/chen14.pdf">paper</a> the most useful.
+It’s both concise, detailed and easy to follow if you are already
+familiar with decision tree ensemble methods (just skip to part 3).</p>
+<p>This post presents and applies XGBoost on a dataset with the goal of
+predicting customer term deposit subscription. The data originally comes
+from a 2014 <a class="reference external" href="http://repositorium.sdum.uminho.pt/bitstream/1822/30994/1/dss-v3.pdf">university paper</a>
+predicting the success of telemarketing campaigns for a Portuguese bank.
+In the paper, the models tested are decision trees, logistic regression,
+support vector machines and neural networks. However, the datasets
+available don’t include all of the variables used and more specifically
+we do not have gender, which is one of the variables retained for their
+final model. The data set I used comes from The <a class="reference external" href="https://archive.ics.uci.edu/ml/datasets/Bank%2BMarketing">UCI Machine Learning
+Repository</a>.
+I used the “bank-full” dataset. For the coding, I’ve used Python 3 in a
+Jupyter notebook.</p>
+<p>There are about 45K rows of data and 16 variables. As well as having
+information on the clients such age, job, education and marital status
+there is also information on telephone marketing campaigns carried out
+and if they have a personal loan. There aren’t any null values in the
+data, but some variables include the modality “unknown”. For example,
+0.6% have an unknown job, 4% have an unknown education level and 29%
+have an unknown communication type (otherwise cellular or telephone).
+Finally, in 82% of the cases, the outcome is unknown for the previous
+marketing campaign and only 3% were a “success”. I chose to keep the
+modality “unknown” instead of replacing it which could have biased the
+model. I also considered dropping the features with 29% and 82% unknown
+values but keeping them improved the result. The variable “age” is
+left-skewed, having a median of 39 for a range of 18-95. This was
+confirmed using scipy.stats.skew (skewness 0.68) and
+scipy.stats.skewtest (p-value of 0 for the null hypothesis that the data
+comes from a normal distribution). There is however no need to
+regularise the data for XGBoost.</p>
+<p>For the modelling, we first import the libraries and define a
+print_metrics function. Given I have an imbalanced data set, with only
+~10% uptake of term deposits by the customers, I don’t pay much
+attention to the accuracy metric.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1">#Import libraries and functions</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">sklearn.preprocessing</span> <span class="kn">import</span> <span class="n">LabelEncoder</span><span class="p">,</span> <span class="n">OneHotEncoder</span>
+<span class="kn">from</span> <span class="nn">sklearn.model_selection</span> <span class="kn">import</span> <span class="n">train_test_split</span><span class="p">,</span><span class="n">GridSearchCV</span>
+<span class="kn">from</span> <span class="nn">sklearn.ensemble</span> <span class="kn">import</span> <span class="n">RandomForestClassifier</span>
+<span class="kn">import</span> <span class="nn">xgboost</span> <span class="k">as</span> <span class="nn">xgb</span>
+<span class="kn">from</span>  <span class="nn">sklearn</span> <span class="kn">import</span> <span class="n">metrics</span>
+
+<span class="c1">#Define a metrics function</span>
+<span class="k">def</span> <span class="nf">print_metrics</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">pred</span><span class="p">):</span>
+
+    <span class="nb">print</span><span class="p">(</span> <span class="s1">&#39;accuracy&#39;</span><span class="p">,</span> <span class="nb">round</span><span class="p">(</span><span class="n">metrics</span><span class="o">.</span><span class="n">accuracy_score</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">pred</span><span class="p">),</span><span class="mi">4</span><span class="p">))</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;precision&#39;</span><span class="p">,</span> <span class="nb">round</span><span class="p">(</span><span class="n">metrics</span><span class="o">.</span><span class="n">precision_score</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">pred</span><span class="p">),</span><span class="mi">4</span><span class="p">))</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;recall&#39;</span><span class="p">,</span>    <span class="nb">round</span><span class="p">(</span><span class="n">metrics</span><span class="o">.</span><span class="n">recall_score</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">pred</span><span class="p">),</span><span class="mi">4</span><span class="p">))</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;f1_score&#39;</span><span class="p">,</span>  <span class="nb">round</span><span class="p">(</span><span class="n">metrics</span><span class="o">.</span><span class="n">f1_score</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">pred</span><span class="p">),</span><span class="mi">4</span><span class="p">))</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">crosstab</span><span class="p">(</span><span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;Actual&#39;</span><span class="p">),</span>
+                            <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">pred</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;Predicted&#39;</span><span class="p">)))</span>
+</pre></div>
+</div>
+<p>Once the data is imported, the categorical features needs to be
+transformed into numerical data. The binary categorical features are
+straight binarized but if there are 3 or more categories then the
+features are transformed in a 2-step process.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1">#Load the data and replace the y target with zeros and ones</span>
+<span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s1">&#39;bank-full.csv&#39;</span><span class="p">,</span> <span class="n">delimiter</span><span class="o">=</span><span class="s2">&quot;;&quot;</span><span class="p">)</span>
+
+<span class="c1">#Encode binary variables</span>
+<span class="n">df</span><span class="o">.</span><span class="n">y</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">y</span><span class="o">.</span><span class="n">replace</span><span class="p">([</span><span class="s1">&#39;no&#39;</span><span class="p">,</span><span class="s1">&#39;yes&#39;</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span> <span class="n">regex</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">df</span><span class="o">.</span><span class="n">default</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">default</span><span class="o">.</span><span class="n">replace</span><span class="p">([</span><span class="s1">&#39;no&#39;</span><span class="p">,</span><span class="s1">&#39;yes&#39;</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span> <span class="n">regex</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">df</span><span class="o">.</span><span class="n">loan</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">loan</span><span class="o">.</span><span class="n">replace</span><span class="p">([</span><span class="s1">&#39;no&#39;</span><span class="p">,</span><span class="s1">&#39;yes&#39;</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span> <span class="n">regex</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">df</span><span class="o">.</span><span class="n">housing</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">housing</span><span class="o">.</span><span class="n">replace</span><span class="p">([</span><span class="s1">&#39;no&#39;</span><span class="p">,</span><span class="s1">&#39;yes&#39;</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span> <span class="n">regex</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Then process the rest of the categorical features first using
+LabelEncoder to change from categories to numeric data.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1">#Identify the column types and so those to be recoded</span>
+<span class="n">cols</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">dtypes</span>
+<span class="n">cats</span><span class="o">=</span><span class="n">cols</span><span class="p">[</span><span class="n">cols</span><span class="o">==</span><span class="s2">&quot;object&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">index</span> <span class="c1">#columns containing categorical data</span>
+<span class="n">num</span><span class="o">=</span><span class="n">cols</span><span class="p">[</span><span class="n">cols</span><span class="o">!=</span><span class="s2">&quot;object&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">index</span> <span class="c1">#columns containing numerical data</span>
+
+<span class="c1">#Transform categorical data to numeric data</span>
+<span class="k">for</span> <span class="n">cat</span> <span class="ow">in</span> <span class="n">cats</span><span class="p">:</span>
+    <span class="n">le</span> <span class="o">=</span> <span class="n">LabelEncoder</span><span class="p">()</span>
+    <span class="n">df</span><span class="p">[</span><span class="n">cat</span><span class="p">]</span> <span class="o">=</span> <span class="n">le</span><span class="o">.</span><span class="n">fit_transform</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">cat</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">))</span>
+
+<span class="n">df</span><span class="o">.</span><span class="n">head</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>With categorical features transformed:</p>
+<a class="reference internal image-reference" href="../../_images/head2.png"><img alt="../../_images/head2.png" src="../../_images/head2.png" style="width: 600px;" /></a>
+<p>Then use one hot encoding to binarize the categorical data and combine
+this array with the already numerical data.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1">#Binarize the data using OneHotEncoder</span>
+<span class="n">ohe</span> <span class="o">=</span> <span class="n">OneHotEncoder</span><span class="p">(</span><span class="n">sparse</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">cat_transformed</span> <span class="o">=</span> <span class="n">ohe</span><span class="o">.</span><span class="n">fit_transform</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span><span class="n">cats</span><span class="p">])</span>
+
+<span class="c1">#Create the dataframe &quot;data&quot; from the numerical and transformed categorical data</span>
+<span class="n">data</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">((</span><span class="n">cat_transformed</span><span class="p">,</span><span class="n">df</span><span class="p">[</span><span class="n">num</span><span class="p">]))</span>
+</pre></div>
+</div>
+<p>Finally carry out sampling to create the test and training datasets. Due
+to the quantity of data, I chose to put 90% of it in the training
+dataset.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1">#Split into test and train</span>
+<span class="n">r</span><span class="o">=</span><span class="mf">0.9</span>
+<span class="n">X_train</span><span class="p">,</span> <span class="n">X_test</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">y_test</span> <span class="o">=</span> <span class="n">train_test_split</span><span class="p">(</span><span class="n">data</span><span class="p">[:,:</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">data</span><span class="p">[:,</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>\
+                                <span class="p">,</span> <span class="n">train_size</span><span class="o">=</span><span class="n">r</span><span class="p">,</span> <span class="n">test_size</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="n">r</span><span class="p">)</span>\
+                                <span class="p">,</span> <span class="n">stratify</span><span class="o">=</span><span class="n">data</span><span class="p">[:,</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="p">)</span>
+</pre></div>
+</div>
+<p>Before modelling in XGBoost, I ran a random forest algorithm to have a
+comparison point with another decision tree ensemble method. I set the
+number of trees to 100 which is the default value for XGBoost. I didn’t
+attempt to tune this model nor compensate for the imbalanced classes.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1">#Random Forest comparison example</span>
+<span class="n">clf</span> <span class="o">=</span> <span class="n">RandomForestClassifier</span><span class="p">(</span><span class="n">n_estimators</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+<span class="n">clf</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
+
+<span class="c1">#Evaluate model</span>
+<span class="n">print_metrics</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span><span class="n">clf</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">X_test</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>The confusion matrix for the test data set, remembering that 1 = “took
+up a term deposit”:</p>
+<a class="reference internal image-reference" href="../../_images/rf_confusionmatrix.png"><img alt="../../_images/rf_confusionmatrix.png" class="align-center" src="../../_images/rf_confusionmatrix.png" style="width: 300px;" /></a>
+<p>Now looking at XGBoost, there are quite a few variables that we can tune
+on. There is even a parameter, <em>scale pos weight</em>, which adjusts for
+imbalanced datasets. The documentation suggests sum(negative instances)
+/ sum(positive instances), which is what I used. I had found that I had
+better results by creating duplicates in the training data, but didn’t
+want to pass duplicates into the grid search alogrithm which uses
+cross-validation.</p>
+<p>In hand tuning a few models, I found that the model preformed really
+well on the training dataset but less well on the test dataset. To
+handle this overfitting, the [tuning recommendations]
+(<a class="reference external" href="https://xgboost.readthedocs.io/en/latest/tutorials/param_tuning.html">https://xgboost.readthedocs.io/en/latest/tutorials/param_tuning.html</a>)
+suggest adjusting the <em>max depth</em>, <em>min child weight</em> and <em>gamma</em>
+parameters.
+<a class="reference external" href="https://xgboost.readthedocs.io/en/latest/python/python_api.html">Gamma</a>
+is the minimum loss reduction required to make a further partition on a
+leaf node of the tree. I also found that if I was willing to sacrifice a
+little precision then I could increase my recall by setting the number
+of estimators to 25 for example whereas the default value was 100. In
+this case it depends on your business case if you prefer to maximise
+recall or precision. Tuning the model using GridSearchCV:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1">#Calculate the scale_pos_weight parameter</span>
+<span class="n">w</span><span class="o">=</span><span class="nb">round</span><span class="p">(</span><span class="n">y_train</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">/</span><span class="nb">sum</span><span class="p">(</span><span class="n">y_train</span><span class="p">),</span><span class="mi">2</span><span class="p">)</span>
+
+<span class="c1">#Create parameters to search</span>
+<span class="n">params</span> <span class="o">=</span> <span class="p">{</span> <span class="s1">&#39;min_child_weight&#39;</span><span class="p">:[</span><span class="mi">5</span><span class="p">,</span><span class="mi">10</span><span class="p">,</span><span class="mi">15</span><span class="p">,</span><span class="mi">20</span><span class="p">],</span>
+           <span class="s1">&#39;max_depth&#39;</span> <span class="p">:</span> <span class="p">[</span><span class="mi">5</span><span class="p">,</span><span class="mi">10</span><span class="p">,</span><span class="mi">15</span><span class="p">],</span>
+           <span class="s1">&#39;gamma&#39;</span><span class="p">:[</span><span class="mi">5</span><span class="p">,</span><span class="mi">10</span><span class="p">,</span><span class="mi">15</span><span class="p">,</span><span class="mi">20</span><span class="p">,</span><span class="mi">25</span><span class="p">,</span><span class="mi">30</span><span class="p">]}</span>
+
+<span class="n">xgb_model</span> <span class="o">=</span> <span class="n">xgb</span><span class="o">.</span><span class="n">XGBClassifier</span><span class="p">(</span>
+                      <span class="n">objective</span><span class="o">=</span> <span class="s1">&#39;binary:logistic&#39;</span><span class="p">,</span>
+                      <span class="n">nthread</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+                      <span class="n">eval_metric</span><span class="o">=</span><span class="s2">&quot;auc&quot;</span><span class="p">,</span>
+                      <span class="n">scale_pos_weight</span> <span class="o">=</span> <span class="n">w</span><span class="p">)</span>
+
+<span class="c1">#Carry out the gridsearch</span>
+<span class="n">grid</span> <span class="o">=</span> <span class="n">GridSearchCV</span><span class="p">(</span><span class="n">xgb_model</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">n_jobs</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<span class="n">grid</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
+
+<span class="c1">#Print the best chosen params</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Best parameters :&quot;</span><span class="p">,</span><span class="n">grid</span><span class="o">.</span><span class="n">best_params_</span><span class="p">)</span>
+</pre></div>
+</div>
+<a class="reference internal image-reference" href="../../_images/best.png"><img alt="../../_images/best.png" src="../../_images/best.png" style="width: 600px;" /></a>
+<p>Finally test the model on the test dataset.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1">#Set the parameters</span>
+<span class="n">params</span> <span class="o">=</span> <span class="p">{</span>  <span class="s1">&#39;objective&#39;</span><span class="p">:</span><span class="s1">&#39;binary:logistic&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;nthread&#39;</span><span class="p">:</span><span class="mi">4</span><span class="p">,</span>
+            <span class="s1">&#39;eval_metric&#39;</span> <span class="p">:</span> <span class="s2">&quot;auc&quot;</span><span class="p">,</span>
+            <span class="s1">&#39;scale_pos_weight&#39;</span> <span class="p">:</span> <span class="n">w</span><span class="p">}</span>
+<span class="n">params</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">grid</span><span class="o">.</span><span class="n">best_params_</span><span class="p">)</span>
+
+<span class="c1">#Train the model</span>
+<span class="n">xgb_model</span> <span class="o">=</span> <span class="n">xgb</span><span class="o">.</span><span class="n">XGBClassifier</span><span class="p">(</span><span class="o">**</span><span class="n">params</span><span class="p">)</span>
+
+<span class="c1">#Fit the model on tuned parameters</span>
+<span class="n">xgb_model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
+
+<span class="c1">#Evaluate on the test dataset</span>
+<span class="n">print_metrics</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span><span class="n">xgb_model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">X_test</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>The confusion matrix for the test data set ( 1 = “took up a term
+deposit”):</p>
+<a class="reference internal image-reference" href="../../_images/xgb_confusionmatrix.png"><img alt="../../_images/xgb_confusionmatrix.png" class="align-center" src="../../_images/xgb_confusionmatrix.png" style="width: 300px;" /></a>
+<p>This XGBoost model compares favourably with the random forest results if
+we are looking to maximise recall which has improved from 54% to 77%.
+However, the precision has taken a hit going from 64% to 53%. This model
+would still be useful to the bank as they would be able to ensure that
+approximately three-quarters of potential customers were targeted in the
+marketing campaign while targeting ~80% fewer customers.</p>
+<p>I would have liked to have trained on a larger parameter grid to see if
+these results could have been improved and to try tuning other
+parameters, such as the number of estimators. However, I was put off by
+the time it would take to search a really dense grid. Using
+RandomizedSearchCV would speed things up but obviously it could easily
+miss some good parameter combinations. This got me side-tracked onto my
+next project… a custom tuning algorithm.</p>
+</section>
+
+<div class="section">
+    
+
+<div class="section">
+  <span style="float: left">
+     Previous:
+    
+    <a href="../pbi_custkbi/">
+       Power BI Custom KPI Indicators
+    </a>
+    
+  </span>
+  <span>&nbsp;</span>
+  <span style="float: right">
+     Next: 
+    <a href="../searchGrid/">
+      Tuning Algorithm for XGBoost 
+    </a>
+    
+  </span>
+</div>
+  
+</div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../"></a></h1>
+
+
+
+
+
+
+
+
+  
+<h2>
+   
+  14 May 2019 
+</h2>
+
+<ul>
+   
+<li id="author">
+  <span
+    >Author:</span
+  >
+   
+  <a href="../../blog/author/keri-sime/">Keri Sime</a>  
+</li>
+     
+</ul>
+
+<h3>
+  <a href="../../blog/">Recent Posts</a>
+</h3>
+<ul>
+   
+  <li>
+    <a href="../spatialDemo/"
+      >25 April - Spatial Demo</a
+    >
+  </li>
+  
+  <li>
+    <a href="../shipSchedule/"
+      >15 June - Scheduling Ships</a
+    >
+  </li>
+  
+  <li>
+    <a href="../projMgmnt/"
+      >15 April - Managing a Machine Learning Project</a
+    >
+  </li>
+  
+  <li>
+    <a href="../mlbox/"
+      >30 October - MLBox</a
+    >
+  </li>
+  
+  <li>
+    <a href="../chisquare/"
+      >27 April - Chi-square Testing in Oracle SQL</a
+    >
+  </li>
+  
+</ul>
+
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search/" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2022, Keri Sime.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 5.0.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../../_sources/posts/xgboost.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

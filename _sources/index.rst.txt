@@ -6,9 +6,8 @@
 Keri's Data Science Blog
 ===========================================
 
-Here is a list of most recent posts:
-
-.. postlist:: 5
+.. postlist::
+   :format: {title} 
    :excerpts:
 
 

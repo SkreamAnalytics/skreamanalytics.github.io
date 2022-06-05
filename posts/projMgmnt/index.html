@@ -1,0 +1,355 @@
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+    <title>Managing a Machine Learning Project &#8212;   documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css" />
+    <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <link rel="author" title="About these documents" href="../../about/" />
+    <link rel="index" title="Index" href="../../genindex/" />
+    <link rel="search" title="Search" href="../../search/" /> 
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+  
+<style type="text/css">
+  ul.ablog-archive {
+    list-style: none;
+    overflow: auto;
+    margin-left: 0px;
+  }
+  ul.ablog-archive li {
+    float: left;
+    margin-right: 5px;
+    font-size: 80%;
+  }
+  ul.postlist a {
+    font-style: italic;
+  }
+  ul.postlist-style-disc {
+    list-style-type: disc;
+  }
+  ul.postlist-style-none {
+    list-style-type: none;
+  }
+  ul.postlist-style-circle {
+    list-style-type: circle;
+  }
+</style>
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+             <section id="managing-a-machine-learning-project">
+<h1>Managing a Machine Learning Project<a class="headerlink" href="#managing-a-machine-learning-project" title="Permalink to this heading">¶</a></h1>
+<p>There is a plethora of data science blog posts, including my own, which
+demonstrate how to create a machine learning (ML) model. Generally, they
+cover how to import the data, split it into to test and train datasets,
+fit the model then make predictions and evaluate the quality. This is
+all very well but the challenging part, and what you spend most of your
+time doing, is setting up the project and preparing the data. Not to
+mention the process of working with stakeholders and ideally monitoring
+ongoing performance.</p>
+<p>Traditionally I haven’t been one for doing a lot of planning before
+starting a project. I’d just grab the data and get coding. However, I’ve
+now been burnt just enough times to now take planning seriously. It’s
+unrealistic to expect to have a useable product after having a one-line
+request from your manager, grabbing some data and then coding something
+up. To this effect, I’ve put a few steps below which should help ensure
+that the modelling done is firstly useable and secondly done a minumum
+number of times. I work in marketing so the examples used relate to
+marketing use cases.</p>
+<section id="step-1-establish-the-business-case">
+<h2>Step 1 - Establish the Business Case<a class="headerlink" href="#step-1-establish-the-business-case" title="Permalink to this heading">¶</a></h2>
+<p>It is essential to really understand what is needed by the business and
+if machine learning is even required. If a rules based model can do the
+job then use this. My approach is to employ the simplest techniques
+available to me which saves the business time and resources. Also,
+stakeholders are more likely to trust and use something more
+understandable. Furthermore, when you move on the person that inherits
+your work may not have your same advanced skillset so will struggle to
+maintain it. Generally, it’s important to keep in mind that the
+investment in any one project needs to be consumerate with the expected
+business benefit.</p>
+<p>To establish the needs of the business you’re going to have to get out
+there and consult with your stakeholders. The work you are doing should
+help them improve their outcomes which they understand through and
+through. To be blunt, if you are designing period products then you need
+to talk to someone who has a period. Same goes in business, don’t assume
+you know how it works. Also, you need stakeholder support to get your
+project rolled out. It’s much easier to get your work accepted if they
+have been consulted and given input from the start.</p>
+<p>So what do you need from the stakeholders? You need to understand the
+wider business context, the specific problem in detail and how the model
+will actually be used to fix this problem. For example, will a churn
+model feed into a process for targeting new customers or for retention
+purposes? If you’re replacing an existing model then look at what has
+already been done and how it preforms before you get started. However,
+just because there is something to refer to, don’t neglect to go back
+and talk to your stakeholders as the current solution might not be
+suitable.</p>
+<p>On the flip side, don’t blindly let the business tell you what they
+need. You might be dealing with someone that has been reading some hype
+on the internet and think that they need such-and-such a model using
+such-and-such data. In this case, it’s important to probe and ask the
+person really specific questions about what they are trying to achieve
+and explain to them why your approach will do the job if it’s different.</p>
+<p>At this stage you should also establish any pay-off matrices. Having a
+relatively too high cost associated with a wrong decision may render an
+‘average’ quality model useless. Or in some cases a very low cost of
+getting it wrong might mean that there is no point even doing the
+modelling.</p>
+</section>
+<section id="step-2-frame-the-project">
+<h2>Step 2 - Frame the Project<a class="headerlink" href="#step-2-frame-the-project" title="Permalink to this heading">¶</a></h2>
+<p>How are you actually going to set the model up? If you are trying to
+predict customer churn, for example, you’ll have to choose a time period
+over which they churn. Are you looking at, say, 3-month or 12-month
+churn rates? Also, think about what data you’re going to use to train
+on. Are you going to use the last 12 months or the last 5 years? If
+you’re using the last 5 years, you need to consider if there have been
+any changes that could impact customer behaviour over that period. In
+that case, you might need to shorten the period over which you collect
+the training data.</p>
+<p>You need to determine which data you’re going to use and how you’re
+going to access it. You may need to look into purchasing some data or it
+might just take time to get access to data which is sitting somewhere
+inaccessible. There’s also the option of government data including
+census data and other open source datasets. When choosing data you need
+to think about the timing of the availability for the prediction
+dataset. If you are modelling churn then you don’t want to include
+information from the phone call which was made at the point of churn. Or
+if you data source has unreliable delivery times it may not be suitable.</p>
+<p>It’s important to consider the legal as well as the ethical implications
+of using certain data sources. Just because it is legal, it doesn’t mean
+it’s a good idea to use it. If you’re using your customer data you will
+need to look at the Terms &amp; Conditions they’ve agreed to but you also
+need to consider the national legal framework you’re operating under.
+Many external data sources come with Terms &amp; Conditions as well. For the
+ethics, you’ll have your own view point but it’s important to liaise
+with your stakeholders and abide by company policy.</p>
+<p>Once you have framed the project, I encourage you to actually explain
+this to someone else. The process of explaining the project, even in an
+email, forces you to really think through what you are doing. Also, this
+person might find a hole in your thinking. It’s better to find out now
+then after you’ve put in weeks of work.</p>
+</section>
+<section id="step-3-prepare-the-data">
+<h2>Step 3 - Prepare the Data<a class="headerlink" href="#step-3-prepare-the-data" title="Permalink to this heading">¶</a></h2>
+<p>Once you’ve collected the data, do exploratory data analysis to check
+the data quality and understand the distribution of the variables. This
+will save you having to redo the modelling process later when you
+realise the input data quality is causing unexpected results. If there
+are too many null values then don’t use it, if there is little
+variability in the data then it’s not going to be very useful. You don’t
+need the same level of data preparation as you would for a statistical
+model but I see little point inlcuding poor quality data especailly if
+it is expensive or difficult to collect. Also, looking at the
+distribution of the variables may indicate if it is worth applying a
+power transformation so that data is less skewed.</p>
+<p>Some platforms will handle null values but I think that you should
+handle null values yourself as you will be able to do this in a nuanced
+way that the platform cannot. So for example, if you have location based
+data, impute relative to location. Think property values - land value
+will be similar in similar areas. This is better than the median land
+value being imputed across the whole country. Or you can use census data
+to impute missing data. For example, age can be replaced with median age
+from the census in a given area. Or if you want to impute missing
+information about pensions in census data then you could use a simple
+linear regression model using age as an input variable.</p>
+</section>
+<section id="step-4-fit-and-evaluate-the-model">
+<h2>Step 4 - Fit and Evaluate the Model<a class="headerlink" href="#step-4-fit-and-evaluate-the-model" title="Permalink to this heading">¶</a></h2>
+<p>You’re now ready for the fun bit but don’t be surprised if you end up
+cycling back into other steps. Make sure you measure the impact on the
+final business outcome not just checking the perfomance on the test
+dataset. So for example, if your model leads to excluding leads from
+aqcuisition lists then you want to know how many leads will be excluded.
+If it’s too many then the sales agents won’t have anyone to call!</p>
+<p>If the model performance is poor, you can fine tune the parameters but
+this can only do so much. You can also consider creating a simpler
+model. So, for example, instead of trying to predict when a customer
+goes into bad debt, try to predict simply if they go into bad debt at
+all. You may also have to look at sourcing some more data.</p>
+<p>Before sharing your model with the business, it’s a good idea to get a
+detailed peer review of your model including the data preparation
+stages. Looking through other people’s work, I’ve sometimes been
+surprised by errors made that would have been picked up if someone else
+had had input in the project. We all make mistakes and as much as it’s
+hard to take criticsm, I’d rather that then roll out a poor quality
+model that costs the business money. Plus it takes some pressure off
+yourself as you’ve got someone else taking at least some of the
+responsiblity for the project.</p>
+<p>Another consideration is using A/B testing. Depending on the project,
+this may be a useful step in the evaluation process.</p>
+</section>
+<section id="step-5-present-the-model-to-stakeholders">
+<h2>Step 5 - Present the Model to Stakeholders<a class="headerlink" href="#step-5-present-the-model-to-stakeholders" title="Permalink to this heading">¶</a></h2>
+<p>Present the model and its impacts to your stakeholders before rolling
+anything out. If you have stayed in touch with them through out the
+project then there won’t be any big surprises and therefore pushback.
+They won’t be interested in what algorithm you have run but they will be
+interested in how deploying the model will affect them and their
+objectives. So keep it light on the data science jargon and present it
+relative to the business context and how it will affect business
+outcomes.</p>
+</section>
+<section id="step-5-deploy-and-monitor-the-model">
+<h2>Step 5 - Deploy and Monitor the Model<a class="headerlink" href="#step-5-deploy-and-monitor-the-model" title="Permalink to this heading">¶</a></h2>
+<p>Simply deploying the model is not enough, performance needs to be
+monitored over time. Also, the model itself will need to be refreshed
+periodically. The frequency of refreshing the model will depend on the
+business case and any changes in the underlying context.</p>
+</section>
+<section id="conclusion">
+<h2>Conclusion<a class="headerlink" href="#conclusion" title="Permalink to this heading">¶</a></h2>
+<p>I hope this post provides some food for thought and help you to
+streamline your modelling process. This steps above clearly have a
+marketing bent but no doubt there is overlap in other domains. It may
+even be worth distilling this into a checklist, keeping it relevant to
+your particular context.</p>
+</section>
+</section>
+
+<div class="section">
+    
+
+<div class="section">
+  <span style="float: left">
+     Previous:
+    
+    <a href="../mlbox/">
+       MLBox
+    </a>
+    
+  </span>
+  <span>&nbsp;</span>
+  <span style="float: right">
+     Next: 
+    <a href="../shipSchedule/">
+      Scheduling Ships 
+    </a>
+    
+  </span>
+</div>
+  
+</div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../"></a></h1>
+
+
+
+
+
+
+
+
+  
+<h2>
+   
+  15 April 2021 
+</h2>
+
+<ul>
+   
+<li id="author">
+  <span
+    >Author:</span
+  >
+   
+  <a href="../../blog/author/keri-sime/">Keri Sime</a>  
+</li>
+     
+</ul>
+
+<h3>
+  <a href="../../blog/">Recent Posts</a>
+</h3>
+<ul>
+   
+  <li>
+    <a href="../spatialDemo/"
+      >25 April - Spatial Demo</a
+    >
+  </li>
+  
+  <li>
+    <a href="../shipSchedule/"
+      >15 June - Scheduling Ships</a
+    >
+  </li>
+  
+  <li>
+    <a href="../mlbox/"
+      >30 October - MLBox</a
+    >
+  </li>
+  
+  <li>
+    <a href="../chisquare/"
+      >27 April - Chi-square Testing in Oracle SQL</a
+    >
+  </li>
+  
+  <li>
+    <a href="../lotkavolterra/"
+      >11 November - Lotka-Volterra for the NZ Electricity Market</a
+    >
+  </li>
+  
+</ul>
+
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search/" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2022, Keri Sime.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 5.0.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../../_sources/posts/projMgmnt.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

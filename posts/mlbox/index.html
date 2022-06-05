@@ -1,0 +1,312 @@
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+    <title>MLBox &#8212;   documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css" />
+    <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <link rel="author" title="About these documents" href="../../about/" />
+    <link rel="index" title="Index" href="../../genindex/" />
+    <link rel="search" title="Search" href="../../search/" /> 
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+  
+<style type="text/css">
+  ul.ablog-archive {
+    list-style: none;
+    overflow: auto;
+    margin-left: 0px;
+  }
+  ul.ablog-archive li {
+    float: left;
+    margin-right: 5px;
+    font-size: 80%;
+  }
+  ul.postlist a {
+    font-style: italic;
+  }
+  ul.postlist-style-disc {
+    list-style-type: disc;
+  }
+  ul.postlist-style-none {
+    list-style-type: none;
+  }
+  ul.postlist-style-circle {
+    list-style-type: circle;
+  }
+</style>
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+             <section id="mlbox">
+<h1>MLBox<a class="headerlink" href="#mlbox" title="Permalink to this heading">¶</a></h1>
+<p>In a business context we aim to produce quality models in a limited time
+period. Even though most of the time spent on a given model actual
+involves sourcing data and preparing the data we can speed up the
+modelling itself by employing autoML tools. A quick internet search
+reveals plenty of options whether they be open source Python packages
+such as TPOT or MLBox or paid for solutions such as DataRobot. H2o is an
+interesting solution as it has an open source platform as well as an
+enterprise solution as well as the package <em>sparkling water</em> for use
+with Spark.</p>
+<p>The platforms aim to streamline the modelling process from preprocessing
+right through to making predictions. Some seem to be easier to install
+and use than others, for example I’ve had issues trying to install
+autoKeras and autosklearn. Some let you load and hit start while others
+require parameter specifications. Here, I’m using MLBox which I found
+easy to install - note it’s Linux only - and use. However, it does have
+some shortcomings such as the fact that it no longer supports XGBoost.
+In that respect, MLBox seems to suffer from not having a community
+behind it to for maintenance and improvement.</p>
+<p>MLBox the user needs to specify the search grid - personally I like this
+as I like to be close to the action but it does take more time and
+effort. Another advantage of MLBox is that it is easy to access the code
+and therefore customise it.</p>
+<p>I have tested MLBox againt my <a class="reference external" href="https://skreamanalytics.gitlab.io/blog/post/searchgrid/">tuning algortihm for
+XGBoost</a>. So
+I’ve used the same dataset with the same test and train split. Since
+XGBoost is not implemented, I’ve used LightGBM. It is actually possible
+to include more than one algorithm and in this case it will ignore
+parameters that don’t apply to a given algorithm.</p>
+<p>The dataset comes from a 2014 <a class="reference external" href="http://repositorium.sdum.uminho.pt/bitstream/1822/30994/1/dss-v3.pdf">university
+paper</a>
+predicting the success of telemarketing campaigns for a Portuguese bank.
+The reduced dataset which I used comes from The <a class="reference external" href="https://archive.ics.uci.edu/ml/datasets/Bank%2BMarketing">UCI Machine Learning
+Repository</a>.
+I used the “bank-full” dataset. For the coding, I’ve used Python 3 in a
+Jupyter notebook.</p>
+<p>There are about 45K rows of data and 16 variables. As well as having
+information on the clients such age, job, education and marital status
+there is also information on telephone marketing campaigns carried out
+and if they have a personal loan. There aren’t any null values in the
+data, but some variables include the modality “unknown”.</p>
+<p>Although my dataset doesn’t have any missing values, MLBox can handle
+them with its NA_encoder() function. With various strategies available
+with the default being the mean for numerical variables and ‘NA’ for
+categorical.</p>
+<p>For the modelling, as usual we start by importing the relevant packages.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1">#Import packages and define a metrics function</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">from</span> <span class="nn">mlbox.preprocessing</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">mlbox.optimisation</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">mlbox.prediction</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">sklearn</span> <span class="kn">import</span> <span class="n">metrics</span>
+</pre></div>
+</div>
+<p>The first step is to import the data then MLBox carries out
+preprocessing activities such as droping duplicates and constant
+variables. It also identifies whether it is a regression or
+classification problem and gives some summary statistics. Rather than
+importing the data into the session ourselves, we just point MLBox in
+the right direction.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1">#Import the data and apply some preprocessing</span>
+<span class="n">paths</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;../raw data/train.csv&quot;</span><span class="p">,</span> <span class="s2">&quot;../raw data/test.csv&quot;</span><span class="p">]</span>
+<span class="n">target_name</span> <span class="o">=</span> <span class="s2">&quot;y&quot;</span>
+
+<span class="n">rd</span> <span class="o">=</span> <span class="n">Reader</span><span class="p">(</span><span class="n">sep</span> <span class="o">=</span> <span class="s2">&quot;,&quot;</span><span class="p">)</span>
+<span class="n">df</span><span class="o">=</span><span class="n">rd</span><span class="o">.</span><span class="n">train_test_split</span><span class="p">(</span><span class="n">paths</span><span class="p">,</span> <span class="n">target_name</span><span class="p">)</span>
+</pre></div>
+</div>
+<a class="reference internal image-reference" href="../../_images/img1.PNG"><img alt="../../_images/img1.PNG" src="../../_images/img1.PNG" style="width: 600px;" /></a>
+<p>The next step is to identify and potentially remove variables suffering
+from <em>drift</em>. Drift refers to covariate shift which is when there is a
+change in the distribution of input variables.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">dft</span> <span class="o">=</span> <span class="n">Drift_thresholder</span><span class="p">()</span>
+<span class="n">df</span><span class="o">=</span> <span class="n">dft</span><span class="o">.</span><span class="n">fit_transform</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+</pre></div>
+</div>
+<a class="reference internal image-reference" href="../../_images/img2.PNG"><img alt="../../_images/img2.PNG" src="../../_images/img2.PNG" style="width: 500px;" /></a>
+<p>We then define the optimisation strategy and search grid. The function
+<em>Opitmiser()</em> has a default scoring metric is negative log loss for a
+classifiation problem. We can also define a scorer ourselves with
+make_scorer(). This function also allows us to define the number of
+cross-validation folds.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">opt</span> <span class="o">=</span> <span class="n">Optimiser</span><span class="p">()</span>
+
+<span class="n">space</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s1">&#39;est__strategy&#39;</span><span class="p">:{</span><span class="s2">&quot;search&quot;</span><span class="p">:</span><span class="s2">&quot;choice&quot;</span><span class="p">,</span>
+                                  <span class="s2">&quot;space&quot;</span><span class="p">:[</span><span class="s2">&quot;LightGBM&quot;</span><span class="p">]},</span>
+
+        <span class="s1">&#39;est__min_child_samples&#39;</span><span class="p">:{</span><span class="s2">&quot;search&quot;</span><span class="p">:</span><span class="s2">&quot;choice&quot;</span><span class="p">,</span>
+                                 <span class="s2">&quot;space&quot;</span><span class="p">:[</span><span class="mi">10</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">40</span><span class="p">,</span> <span class="mi">100</span><span class="p">]},</span>
+
+        <span class="s1">&#39;est__max_depth&#39;</span><span class="p">:{</span><span class="s2">&quot;search&quot;</span><span class="p">:</span><span class="s2">&quot;choice&quot;</span><span class="p">,</span>
+                                  <span class="s2">&quot;space&quot;</span><span class="p">:[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">30</span><span class="p">]},</span>
+
+        <span class="s1">&#39;est__n_estimators&#39;</span><span class="p">:{</span><span class="s2">&quot;search&quot;</span><span class="p">:</span><span class="s2">&quot;choice&quot;</span><span class="p">,</span>
+                                   <span class="s2">&quot;space&quot;</span><span class="p">:[</span><span class="mi">50</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">250</span><span class="p">,</span> <span class="mi">500</span><span class="p">]}</span>
+        <span class="p">}</span>
+</pre></div>
+</div>
+<p>Next the tuning is carried out to identify the best parameters. This
+took about 45 minutes for my problem. For each iteration, the <em>NA
+encoder</em> for imputing missing values is run along with the <em>CA encoder</em>
+for encoding categorical values. The CA encoder is interesting in that
+it calculates entity embeddings rather than using a label encoder for
+example. So categories are represented by vectors in a euclidian space
+using a neural network to learn the representation.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">params</span> <span class="o">=</span> <span class="n">opt</span><span class="o">.</span><span class="n">optimise</span><span class="p">(</span><span class="n">space</span><span class="p">,</span> <span class="n">df</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This resulted in the below parameters:</p>
+<a class="reference internal image-reference" href="../../_images/img3.PNG"><img alt="../../_images/img3.PNG" src="../../_images/img3.PNG" style="width: 600px;" /></a>
+<p>We can then predict the outcomes and save them in a csv file using the
+below.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">%</span><span class="n">matplotlib</span> <span class="n">inline</span> <span class="c1">#so plots are displayed in the notebook not as pop-ups</span>
+
+<span class="n">prd</span> <span class="o">=</span> <span class="n">Predictor</span><span class="p">(</span><span class="n">to_path</span><span class="o">=</span><span class="s2">&quot;save&quot;</span><span class="p">)</span>
+<span class="n">prd</span><span class="o">.</span><span class="n">fit_predict</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">df</span><span class="p">)</span>
+</pre></div>
+</div>
+<a class="reference internal image-reference" href="../../_images/img5.PNG"><img alt="../../_images/img5.PNG" src="../../_images/img5.PNG" style="width: 400px;" /></a>
+<p>Finally printing the results I got a ROC AUC score of 0.7331 which is
+somewhere between the first run from my XGBoost tuning algorithm which
+returned a result of 0.7270 and the second which returned 0.7615. In
+reality the confusion matrix and associated metrics need to be studied
+in order to make an informed choice.</p>
+</section>
+
+<div class="section">
+    
+
+<div class="section">
+  <span style="float: left">
+     Previous:
+    
+    <a href="../chisquare/">
+       Chi-square Testing in Oracle SQL
+    </a>
+    
+  </span>
+  <span>&nbsp;</span>
+  <span style="float: right">
+     Next: 
+    <a href="../projMgmnt/">
+      Managing a Machine Learning Project 
+    </a>
+    
+  </span>
+</div>
+  
+</div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../"></a></h1>
+
+
+
+
+
+
+
+
+  
+<h2>
+   
+  30 October 2020 
+</h2>
+
+<ul>
+   
+<li id="author">
+  <span
+    >Author:</span
+  >
+   
+  <a href="../../blog/author/keri-sime/">Keri Sime</a>  
+</li>
+     
+</ul>
+
+<h3>
+  <a href="../../blog/">Recent Posts</a>
+</h3>
+<ul>
+   
+  <li>
+    <a href="../spatialDemo/"
+      >25 April - Spatial Demo</a
+    >
+  </li>
+  
+  <li>
+    <a href="../shipSchedule/"
+      >15 June - Scheduling Ships</a
+    >
+  </li>
+  
+  <li>
+    <a href="../projMgmnt/"
+      >15 April - Managing a Machine Learning Project</a
+    >
+  </li>
+  
+  <li>
+    <a href="../chisquare/"
+      >27 April - Chi-square Testing in Oracle SQL</a
+    >
+  </li>
+  
+  <li>
+    <a href="../lotkavolterra/"
+      >11 November - Lotka-Volterra for the NZ Electricity Market</a
+    >
+  </li>
+  
+</ul>
+
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search/" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2022, Keri Sime.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 5.0.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../../_sources/posts/mlbox.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

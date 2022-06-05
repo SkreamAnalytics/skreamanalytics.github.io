@@ -1,0 +1,400 @@
+
+.. post:: May 26, 2019
+   :author: Keri Sime
+
+Tuning Algorithm for XGBoost
+=============================
+
+My earlier post on XGBoost in Python got me interested in writing my
+own tuning algorithm. I wanted to tune the XGBoost algorithm on a
+reasonably large parameter grid but was put off by the time it would
+take. Although, using scikit-learn’s RandomizedSearchCV would speed
+things up I wanted to do a slightly more thorough search. So I decided
+to use the idea of a random search but to also go one step further by
+searching in the neighbourhood of the best random parameter to optimise
+the result.
+
+This post is going to be a lot of code. Although I’ve tailored it to an
+XGBoost model for a binary classification problem it could be easily
+adapted to other modelling problems. Also, extra parameters could be
+added to the algorithm if need be. One of the biggest challenges in
+writing the algorithm was indexing correctly and accessing values in
+dictionaries. The example grid I will present here has 4 parameters to
+tune on and a total of 35 individual parameter values. I we had run a
+grid search on the entire grid then 5400 parameter combinations would
+have had to have been tested, with my algoirthm I test up to 91
+combinations in the best neighbourhood after testing n different random
+values.
+
+As usual, start by importing the relevant libraries. In this block of
+code, I’ve also blocked a particular warning which is a bug in sklearn
+related to the use of LabelEncoder. This is a known error and has been
+fixed in later versions. I’m using sklearn version 0.19.1 with Numpy
+1.14.0.
+
+::
+
+   #Import the libraries 
+   import pandas as pd
+   import numpy as np
+   from sklearn.preprocessing import OneHotEncoder, LabelBinarizer
+   from sklearn.model_selection import train_test_split
+   import xgboost as xgb
+   from sklearn.metrics import roc_auc_score
+   import time
+   import math
+   import copy
+   from itertools import product
+   import random
+   import warnings
+   from datetime import datetime 
+   warnings.filterwarnings(module='sklearn*', action='ignore', 
+                                                   category=DeprecationWarning)
+
+The grid search is broken up into 3 functions. This first function
+randomly generates a set of parameters from the grid to be searched. The
+grid needs to be in dictionary format. The output is a random candidate
+and the corresponding indices. The indices are used as input to the
+following function, it saves having to identify them again later.
+
+::
+
+   def generate_candidate(grid):
+           
+       k=list(grid.keys()) #get the dictionary keys from the grid
+       n_vars=len(k) #get the number of parameters
+       
+       #Create an empty combination of parameters by copying the 
+       #grid and setting each list of parameter values to 0
+       candidate=copy.deepcopy(grid)
+       for i in range(n_vars):
+           candidate[k[i]]=0
+       candidate=[candidate] #convert to list for indexing
+
+       #Initialise a randomly generated set of parameter positions
+       indices=[]
+       els = list(grid.items()) #convert dictionary to list for indexing
+       for i in range(len(els)):
+           #generate random indices
+           indices.append(random.randint(0,len(els[i][1])-1))
+
+       #Attribute parameter values to the parameter labels using the random indices
+       for i in range(n_vars):
+           candidate[0][k[i]] = grid[k[i]][indices[i]]
+       
+       return candidate, indices
+
+This next function generates a list of all the parameters in the
+neighbourhood of :math:`s0` where :math:`s0` is a list of indices for each parameter
+value of a candidate (the output “indices” from above). The values
+considered in the neighbourhood are all the combinations of :math:`\{s0, s0-1,
+s0+1\}`.
+
+For example; if we have:
+
+::
+
+   grid = {'min_child_weight':[10,15,20,30,40], 
+           'max_depth': [5,10,20], 
+           'n_estimators':[100,200,300,400]} 
+
+for s0=[3,3,3], then the neighbourhood will take all combinations of :
+{‘min_child_weight’:[15,20,30], ‘max_depth’: [5,10,20] ,
+‘n_estimators’:[200,300,400]}.
+
+::
+
+   def generate_neighbourhood(grid,s0):
+
+       k=list(grid.keys()) #get the dictionary keys
+       n_vars=len(k) #get the number of parameters
+       #generate relative indices combinations
+       mvts = list(product([0, -1, 1], repeat=n_vars) ) 
+
+       #Generate the list of combinations of indices
+       comb=list()
+       for i in range(len(mvts)):
+           comb.append(list(np.array(mvts[i])+s0))
+
+       #Generate the list of combinations containing at least one value outside 
+       #of parameter indice ranges
+       l=[] #intialise the list
+       for c in range(len(comb)):
+           for n in range(n_vars):
+               if comb[c][n] <0 or comb[c][n] > len(grid[k[n]])-1 :
+                   l.append(c)
+
+       #Remove the combinations containing at least one out-of-range index
+       comb = [i for j, i in enumerate(comb) if j not in l]     
+
+       #Create an empty combination of parameters by copying the grid 
+       #and setting each list of parameter values to 0
+       neighbours=copy.deepcopy(grid)
+       for i in range(n_vars):
+           neighbours[k[i]]=0
+       neighbours=[neighbours]#convert to list for indexing
+       
+       #Create a list of i empty parameters sets corresponding to the number 
+       #of combinations
+       n=copy.deepcopy(neighbours)
+       for i in range(len(comb)-1):
+           neighbours.extend(copy.deepcopy(n))
+      
+       #Attribute the values to the parameter labels
+       for m in range(len(comb)): #for each combination
+           for i in range(n_vars): #for each label in a given combination
+               try: 
+                   grid[k[i]] #test that grid value exists
+                   try: 
+                       #assign the parameter values
+                       neighbours[m][k[i]] 
+                       neighbours[m][k[i]] = grid[k[i]][comb[m][i]] 
+                   except: 
+                       pass
+               except:
+                   del neighbours[m]
+                   pass
+
+       return neighbours
+
+| Finally we define the function which carries out the grid search. With
+  the following parameters:
+| *grid* - grid to be searched
+| *data* - data to be modeled
+| *y loc* - column holding the y variable to be predicted
+| *n hood* - number of random candidates to be tested before searching
+  thoroughly in the best neighbourhood
+| *cv* - the number of cross-validation folds
+| *balance* - if True duplicates of the positive observations will be
+  made
+| *early stopping rounds* - the XGBoost parameter of the same name (so
+  you can speed things up)
+| *r* - ratio of data in the training dataset
+
+::
+
+   def gridSearch(grid, df, target, n_hoods=10, cv=5, balance=False, 
+                  early_stopping_rounds=20,r=0.8):
+       
+       start = datetime.now()
+      
+       #Create the cross-validation datasets.
+       datasets=[]
+       for i in range(cv):
+           train, test = train_test_split(df, train_size=r,
+                           test_size=(1-r), stratify=df[target] )
+           
+           #encode independant variables
+           enc = OneHotEncoder(handle_unknown = 'ignore')
+           enc.fit(train.drop([target], axis=1))
+           X_train = enc.transform(train.drop([target], axis=1))
+           X_test = enc.transform(test.drop([target], axis=1))
+           
+           #encode target
+           lb = LabelBinarizer()
+           lb.fit(train[target])
+           y_train = lb.transform(train[target]).ravel()
+           y_test = lb.transform(test[target]).ravel()
+           
+           datasets.append([[X_train],[y_train],[X_test],[y_test]]) 
+
+       
+       #Initialise the parameters
+       params = {'objective':'binary:logistic', 'eval_metric' : 'auc','nthread':4, 
+                 'early_stopping_rounds' : early_stopping_rounds}
+       
+       #Initialise the variables
+       metric_bestCandidate=0
+       tabuList=[] #this list is used to identify candidates that have already been tested
+       n=0 #used to count the number of random parameter sets tested
+           
+       while (metric_bestCandidate < 1):
+                  
+           while n<n_hoods:
+               n=n+1
+               candidate, indices =generate_candidate(grid) #generate a random candidate
+
+               if [list(candidate)[0]] not in tabuList: #if the candidate hasn't been tested already
+                   tabuList.append(copy.deepcopy(candidate))
+                   metric_total=0
+                   
+                   #For each pre-defined dataset, test the parameter set on the data and calulate the average metric
+                   for i in range(cv): 
+                       X_train = datasets[i][0][0]
+                       y_train = datasets[i][1][0]
+                       X_test  = datasets[i][2][0]
+                       y_test  = datasets[i][3][0]
+                       
+                       params.update(list(candidate)[0]) #update the parameters
+                       
+                       if balance==True:
+                           w=round(y_train.shape[0]/sum(y_train),2)
+                       else:
+                           w=1
+           
+                       xgb_model = xgb.XGBClassifier(**params, verbosity = 0,scale_pos_weight = w) #update the model
+                       xgb_model.fit(X_train, y_train) #train the model
+                       pred=xgb_model.predict(X_test) #prediction on the test dataset
+                       metric_candidate = roc_auc_score(y_test,pred) #quality of the test dataset
+                       
+                       metric_total=metric_total+metric_candidate #sum the metric values
+                   
+                   metric_mean=metric_total/cv#calculate the average metric value
+                                
+                   #If the candidate tested gives a better result then the previous best, then update the best 
+                   #candidate and the best metric value
+                   if metric_mean > metric_bestCandidate:
+                       bestCandidate = candidate
+                       metric_bestCandidate=metric_candidate
+                       bestCandidateIndices=indices #used to generate the neighbourhood in the next step
+                       print('**new best** ','candidate: ', list(candidate)[0], 'mean metric', round(metric_mean,4) ) #print update
+                   else:
+                       print('candidate: ', list(candidate)[0], 'mean metric', round(metric_mean,4) ) #print update
+           
+           #Once n_hood candidates have been tested. Generate the list of neighbours of the best candidate
+           neighbourhood=generate_neighbourhood(grid, bestCandidateIndices)
+           print('TEST NEIGHBOURHOOD OF BEST CANDIDATE:', list(bestCandidate))
+           
+           i=0 #count the number of candidates tested in the neighbourhood
+           
+           #Test the candidates in the neighbourhood
+           for candidate in enumerate(neighbourhood):
+               if [list(candidate)[1]] not in tabuList: #if the candidate has been tested already then do nothing
+                   metric_total=0
+                   i=i+1
+                   
+                   #For each pre-defined dataset, test the parameter set on the data and calulate the average metric
+                   for i in range(cv): 
+                       X_train = datasets[i][0][0]
+                       y_train = datasets[i][1][0]
+                       X_test  = datasets[i][2][0]
+                       y_test  = datasets[i][3][0]
+                       
+                       params.update(list(candidate)[1]) #update the parameters
+                       
+                       if balance==True:
+                           w=round(y_train.shape[0]/sum(y_train),2)
+                       else:
+                           w=1
+                       xgb_model = xgb.XGBClassifier(**params, verbosity = 0, scale_pos_weight = w) #update the model
+                       xgb_model.fit(X_train, y_train) #train the model
+                       pred=xgb_model.predict(X_test) #prediction on the test dataset
+                       metric_candidate = roc_auc_score(y_test,pred ) #quality of the test dataset
+                       
+                       metric_total=metric_total+metric_candidate
+                      
+                   metric_mean=metric_total/cv
+                                   
+                   #If the candidate tested gives a better result then the previous best, then update the best 
+                   #candidate and the best metric value
+                   if metric_mean > metric_bestCandidate:
+                       bestCandidate = candidate
+                       metric_bestCandidate=metric_mean
+                       print('**new best** ','candidate: ', list(candidate)[1], 'mean metric', round(metric_mean,4) ) #print update
+                   else:
+                       print('candidate: ', list(candidate)[1], 'mean metric', round(metric_mean,4) ) #print update
+           
+           if i==0:
+               print('no additional candidates tested') #print update
+           
+           break
+       
+       print(datetime.now() - start)
+                   
+       return bestCandidate, metric_bestCandidate
+
+I tested my grid search on the dataset from the `UCI Machine Learning
+Repository <https://archive.ics.uci.edu/ml/datasets/Bank%2BMarketing>`__
+that I previously used for my post on XGBoost. The next block of code
+imports and processes this data.
+
+::
+
+   #Import the dataset
+   df = pd.read_csv('C:/..../bank-full.csv', delimiter=";")
+
+I ran a couple of iterations on the data set. Due to the first random
+step, I didn’t get the same results and I think it would be well worth
+increasing the number of random candidates tested - I only tested 10.
+
+My grid below has 5400 possible parameter combinations, but I’ll test a
+maximum of 91. Note that some of the values in the below grid have been
+chosen to reduce running time during testing. For example, most of the
+choices for the number of estimators are low.
+
+::
+
+   #Initialise search grid
+   grid = { 'min_child_weight':[2,5,10,15,20,25,50,75,100,200],
+             'max_depth' : [2,5,10,15,20,30],
+             'gamma':[0,5,10,15,20,25,30,35,100],
+             'n_estimators':[5,10,15,20,30,40,50,100,500,1000]}
+
+The first time I ran the grid search it took about 6 hours so I
+subsequently reduced the number of *early stopping rounds* to 5 to speed
+things up which substaintially reduced running time. While working on
+this dataset for my early post, I noticed that once the AUC stopped
+moving, it didn’t improve again later so I was quite happy to set it so
+low. I also only tested the defualt 10 randomly chosen candidates before
+the neighbourhood search and only used 2 cross-fold validations to
+decrease the time taken.
+
+::
+
+   bestCandidate, metric_bestCandidate = gridSearch(grid, 
+                                                    df, 
+                                                    target='y',
+                                                    cv=2 
+                                                    balance=True, 
+                                                    early_stopping_rounds=5)
+
+   print('result bestCandidate', bestCandidate)
+   print('result metric_bestCandidate', metric_bestCandidate)
+
+.. image:: ../_static/images/gridsearch/sortie_1.PNG
+  :width: 600
+
+We can see that the intially identified ‘best candidate’ from the
+initial 10 random candidates with a mean ROC AUC of 0.7237 is:
+
+::
+
+   params = { 'min_child_weight':200,
+             'max_depth' : 20,
+             'gamma':5,
+             'n_estimators':100}
+
+The neighbourhood of this best candidate is then tested to see if we can
+improve the AUC. This resulted in an final choice of parameters with a
+ROC AUC of 0.7270 as per below:
+
+::
+
+   params = { 'min_child_weight':200,
+             'max_depth' : 20,
+             'gamma':10,
+             'n_estimators':100}
+
+.. image:: ../_static/images/gridsearch/sortie_best.PNG
+  :width: 600
+
+This final result wasn’t really worth the extra time and effort
+especially when compared to the second run which result in a ROC AUC of
+0.7615 for the below parameters:
+
+::
+
+   params = { 'min_child_weight':2,
+             'max_depth' : 15,
+             'gamma':30,
+             'n_estimators':50}
+
+We see quite clearly the impact of the starting point for the
+neighbourhood search - choosing 10 random test candidates was probably
+not enough. However, this can still give an idea of the impact of
+changing any single parameter. For example, in some initial testing I
+did, I noticed that an increase in gamma had a noticeable impact on the
+AUC which would indicate it could be worth testing a grid including
+another higher value of gamma. Another possible improvement is
+restarting the neighbourhood search each time a new *best candidate* is
+identified within a given neighbourhood search.
