@@ -1,0 +1,427 @@
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+    <title>Logistic Regression &#8212;   documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css" />
+    <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <link rel="author" title="About these documents" href="../../about/" />
+    <link rel="index" title="Index" href="../../genindex/" />
+    <link rel="search" title="Search" href="../../search/" /> 
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+  
+<style type="text/css">
+  ul.ablog-archive {
+    list-style: none;
+    overflow: auto;
+    margin-left: 0px;
+  }
+  ul.ablog-archive li {
+    float: left;
+    margin-right: 5px;
+    font-size: 80%;
+  }
+  ul.postlist a {
+    font-style: italic;
+  }
+  ul.postlist-style-disc {
+    list-style-type: disc;
+  }
+  ul.postlist-style-none {
+    list-style-type: none;
+  }
+  ul.postlist-style-circle {
+    list-style-type: circle;
+  }
+</style>
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+             <section id="logistic-regression">
+<h1>Logistic Regression<a class="headerlink" href="#logistic-regression" title="Permalink to this heading">¶</a></h1>
+<p>Don’t be fooled by the name, logistic regression is actually a
+<em>classification</em> model and one of the most commonly used at that.
+However, the name still makes sense as the mathematics of this model are
+based on linear regression.</p>
+<section id="theory">
+<h2>Theory<a class="headerlink" href="#theory" title="Permalink to this heading">¶</a></h2>
+<p>Here, I’ll present binomial logistic regression in detail which can then
+be extended to a multinomial model.</p>
+<section id="binomial-logistic-regression">
+<h3>Binomial Logistic Regression<a class="headerlink" href="#binomial-logistic-regression" title="Permalink to this heading">¶</a></h3>
+<p>Say we have a binary variable, Y, with values 0 or 1. Instead of
+predicting the dependent variable directly, we predict the probability
+that the dependent variable, Y, is 1 given a vector of independant
+variables <span class="math notranslate nohighlight">\(\vec{x}\)</span>. This is written mathematically as a conditional probability:
+<span class="math notranslate nohighlight">\(P(Y=1 |\vec{X} = \vec{x} )\)</span>.</p>
+<p>Taking the <em>linear regression model</em> <span class="math notranslate nohighlight">\(Y = \beta_0 + \beta.X\)</span>, replacing <span class="math notranslate nohighlight">\(Y\)</span>
+with the conditional probability, now written as <span class="math notranslate nohighlight">\(p(x; \beta)\)</span>, and then applying the inverse
+logisitc function gives the following model:</p>
+<div class="math notranslate nohighlight">
+\[\ln\frac{p(x;\beta)}{1-p(x; \beta)} = \beta_0 + x.\beta\]</div>
+<p>If we solve the equation for <span class="math notranslate nohighlight">\(p(x; \beta)\)</span> then we have:</p>
+<div class="math notranslate nohighlight">
+\[P(Y=1 |\vec{X} = \vec{x} ) = p(x;\beta) =  \frac{1}{1+exp{-(\beta_0 + x\beta)}}\]</div>
+<p>So now the conditional probability is expressed as a logistic function,
+a common sigmoid function, having the form <span class="math notranslate nohighlight">\(f(x)=\frac{1}{1 + exp(x)}\)</span>. The logistic or logit
+function, graphed below, is bounded between 0
+and 1 which corresponds nicely to our conditional probability which must
+also be between 0 and 1. It also takes into account diminishing returns
+as opposed to a linear function which has a constant gradient.</p>
+<a class="reference internal image-reference" href="../../_images/logisticCurve3.PNG"><img alt="../../_images/logisticCurve3.PNG" class="align-center" src="../../_images/logisticCurve3.PNG" style="width: 200px;" /></a>
+<p>Knowing that this model is a transformation of the linear regression
+model, it becomes obvious that it is a “regression” model and that it is
+in fact a linear model. Furthermore, logistic regression belongs to the
+more general family of <em>generalised linear models</em> (GLM) and in R the
+glm() function is used to implement it.</p>
+<p>To minimise the misclassification rate, we predict Y = 1 when p&gt;=0.5 and
+Y=0 otherwise. This is equivalent to predicting that Y=1 when <span class="math notranslate nohighlight">\(\beta_0 + x.\beta = 0\)</span>
+and <span class="math notranslate nohighlight">\(Y=0\)</span> otherwise. Therefore, the equation to the decision boundary
+separating the two classes is <span class="math notranslate nohighlight">\(\beta_0 + x.\beta = 0\)</span>.</p>
+</section>
+<section id="multinomial-logistic-regression">
+<h3>Multinomial Logistic Regression<a class="headerlink" href="#multinomial-logistic-regression" title="Permalink to this heading">¶</a></h3>
+<p>The multinomial model with k classes has k-1 sets of parameters. This is
+coherent with the binomial model which has one set of parameters to
+distinguish between the two classes. A simple way to implement a
+multinomial logistic regression is to run a series of k-1 <em>binomial</em>
+logistic regressions by comparing one class to the other k-1 other
+classes grouped together. However, this is not the only method to
+formulate a multinomial logistic regression.</p>
+</section>
+<section id="numerical-optimisation">
+<h3>Numerical Optimisation<a class="headerlink" href="#numerical-optimisation" title="Permalink to this heading">¶</a></h3>
+<p>The maximum likelihood function is used to calculate the parameters of
+the logistic model:</p>
+<div class="math notranslate nohighlight">
+\[L(\beta) = \displaystyle\prod_{i=1}^n p(x_i;\beta)^{y_i}(1-p(x_i;\beta))^{1-y_i}\]</div>
+<p>Taking the log of both sides of this equation, and so obtaining the
+log-likelihood, eliminates the product and replaces it with a sum.
+Similarly, the exponents become multipliers. We can then rewrite the
+equation as:</p>
+<div class="math notranslate nohighlight">
+\[l(\beta) = \displaystyle\sum_{i=1}^n -log(1) + exp(\beta_0 + x_i.\beta) + \sum_{i=1}^n y_i(\beta_0 + x_i.\beta)\]</div>
+<p>Using the fact that</p>
+<div class="math notranslate nohighlight">
+\[p(x;\beta)= \frac{1}{1+exp{-(\beta_0 + x\beta)}}\]</div>
+<p>Where we have a vector of features, <span class="math notranslate nohighlight">\(x_i\)</span>, an observed class <span class="math notranslate nohighlight">\(y_i\)</span> and the probability
+<span class="math notranslate nohighlight">\(p(x_i;\beta)\)</span>, that <span class="math notranslate nohighlight">\(y_i\)</span> is 1.</p>
+<p>Usually to find the parameters, we set the partial derivatives of the
+maximum likelihood function, below, to zero.</p>
+<div class="math notranslate nohighlight">
+\[\displaystyle\frac{\partial l(\beta)}{\partial \beta_j} = -\sum_{i=1}^{n} \frac{1}{1+exp(\beta_0 + x_i.\beta)}exp(\beta_0 + x_i.\beta)x_{ij} + \sum_{i=1}^{n} y_i x_{ij}\]</div>
+<div class="math notranslate nohighlight">
+\[\displaystyle = \sum_{i=1}^{n}(y_i-p(x_i;\beta))x_{i}\]</div>
+<p>However, there is no analytical solution and so numerical optimisation
+is used to solve it. There are multiple possible numerical optimisation
+methods available. A common method, also used in R’s glm() function, is
+<em>iteratively reweighted least squares</em>.</p>
+</section>
+<section id="iteratively-reweighted-least-squares">
+<h3>Iteratively reweighted least squares<a class="headerlink" href="#iteratively-reweighted-least-squares" title="Permalink to this heading">¶</a></h3>
+<p>Each step involves solving a weighted least squares problem using
+Newton’s or the Newton Raphson method. Newton’s algorithm, for an
+initial estimate <span class="math notranslate nohighlight">\(x_0\)</span>, performs the following update:</p>
+<div class="math notranslate nohighlight">
+\[x_{n+1} = x_n - \frac{f(x_n)}{f'(x_n)}\]</div>
+<p>This process solves for <span class="math notranslate nohighlight">\(f(x) = 0\)</span>. However, if we want to find the maximum of a function, we solve for
+<span class="math notranslate nohighlight">\(f'(x)=0\)</span>. So substituting <span class="math notranslate nohighlight">\(f(x) = l'(x)\)</span> into the equation we have the following update:</p>
+<div class="math notranslate nohighlight">
+\[x_{n+1} = x_n - \frac{l'(x_n)}{l''(x_n)}\]</div>
+<p>Applying this to logistic regression we have:</p>
+<div class="math notranslate nohighlight">
+\[\beta^{n+1} = \beta^n - (\frac{\partial^2 l(\beta)}{\partial \beta \partial \beta^t})^{-1} .\frac{\partial l(\beta)}{\partial \beta}\]</div>
+<p>Where the second derivative, called the Hessian, is:</p>
+<div class="math notranslate nohighlight">
+\[\frac{\partial^2 l(\beta)}{\partial \beta \partial \beta^t} = -\sum_{i=1}^nx_ix_i^tp(x_i;\beta)(1-p(x;\beta))\]</div>
+<p>Initially, this relationship isn’t necessarily evident. If we calculate
+the first three partial derivatives it becomes clear.</p>
+<div class="math notranslate nohighlight">
+\[\frac{\partial^2 l(\beta)}{\partial \beta \partial \beta_0}= \frac{\partial\sum_{i=1}^{n}(y_i-p(x_i;\beta))x_{i}}{\partial \beta_0}=\sum_{i=1}^n 0 - \frac{\partial}{\partial \beta_0} (\frac{exp(\beta_0 + x\beta)}{1+exp(\beta_0 + x\beta)})x_i\]</div>
+<div class="math notranslate nohighlight">
+\[\space\space\space\space\space\space\space\space\space\space\space=-\sum_{i=1}^n \frac{exp(\beta_0 + x\beta)(1+exp(\beta_0 + x\beta)) - exp(\beta_0 + x\beta)^2}{(1+exp(\beta_0 + x\beta))^2}x_i \space\space\space\space \text{(using the quotient rule)}\]</div>
+<div class="math notranslate nohighlight">
+\[\space\space\space\space\space\space\space\space\space\space\space=-\sum_{i=1}^n \frac{exp(\beta_0 + x\beta)}{1+exp(\beta_0 + x\beta)}  . \frac{1+ exp(\beta_0 + x\beta) - exp(\beta_0 + x\beta)}{1+exp(\beta_0 + x\beta)}x_i\]</div>
+<div class="math notranslate nohighlight">
+\[\space\space\space\space\space\space\space\space\space\space\space=-\sum_{i=1}^np(x;\beta)(1-p(x;\beta))x_i\]</div>
+<p>If we do the same for <span class="math notranslate nohighlight">\(\beta_1\)</span>:</p>
+<div class="math notranslate nohighlight">
+\[\frac{\partial^2 l(\beta)}{\partial \beta \partial \beta_1}=-\sum_{i=1}^np(x;\beta)(1-p(x;\beta))x_ix_i^1\]</div>
+<p>Likewise for <span class="math notranslate nohighlight">\(\beta_3\)</span>:</p>
+<div class="math notranslate nohighlight">
+\[\frac{\partial^2 l(\beta)}{\partial \beta \partial \beta_3}=-\sum_{i=1}^np(x;\beta)(1-p(x;\beta))x_ix_i^3\]</div>
+<p>And so on and so forth.</p>
+<p>Now we can manipulate the equation for <span class="math notranslate nohighlight">\(\beta^{n+1}\)</span> in order to write it as a weighted least squares step. Since the
+log-likehood equations are concave it does converge.</p>
+<p>The update process can be rewritten in matrix form with <span class="math notranslate nohighlight">\(\vec{p}\)</span> representing the probabilities <span class="math notranslate nohighlight">\(p(x_i;\beta)\)</span>
+and W a diagonal matrix with entries <span class="math notranslate nohighlight">\(p(x_i;\beta)(1-p(x_i;\beta))\)</span>:</p>
+<div class="math notranslate nohighlight">
+\[\vec{\beta}^{n+1} = \vec{\beta}^n - (X^tWX)^{-1}X^t(\vec{y}-\vec{p})\]</div>
+<p>This can then be rewritten, with <span class="math notranslate nohighlight">\(\vec{z}= X\vec{\beta}^n + W(\vec{y}-\vec{p})\)</span>, to represent a weighted least squares step:</p>
+<div class="math notranslate nohighlight">
+\[\vec{\beta}^{n+1} = (X^tWX)^{-1}X^tW\vec{z}\]</div>
+<p>In the case of a linear regression we obtain the standard least squares
+solution which is calculated in a single step since <span class="math notranslate nohighlight">\(\beta^{n+1}\)</span> is independant of :math:beta^{n}.</p>
+</section>
+<section id="pros-and-cons">
+<h3>Pros and Cons<a class="headerlink" href="#pros-and-cons" title="Permalink to this heading">¶</a></h3>
+<p>Part of the reason for the popularity of logistic regression is that it
+is a traditional and therefore better-known method. Other advantages are
+that it allows the calculation of log-odds and the ability to validate
+the model using p-values and anova.</p>
+</section>
+</section>
+<section id="code">
+<h2>Code<a class="headerlink" href="#code" title="Permalink to this heading">¶</a></h2>
+<p>This is fairly basic example using the well-known Titanic data set.
+You’ll need the package “Titanic” which supplies the data in an easy to
+use format. I’ve simply deleted the rows containing null values, but I
+could also have replaced them with for example, the median value. Note
+that a <em>1</em> in the <em>Survived</em> column indicates the person survived as
+opposed to <em>0</em>. The survivors are also referred to as <em>positives</em> or
+<em>positive instances</em>. The variable <em>SibSp</em> represents the number of
+siblings/spouses aboard and the variable <em>Parch</em> represents the number
+of parents/children aboard.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1">#Step1. Load the data and create the model</span>
+<span class="n">library</span><span class="p">(</span><span class="n">titanic</span><span class="p">)</span>
+
+<span class="c1">#Clean the data to remove NAs</span>
+<span class="n">train</span><span class="o">&lt;-</span><span class="n">na</span><span class="o">.</span><span class="n">omit</span><span class="p">(</span><span class="n">titanic_train</span><span class="p">[,</span><span class="n">c</span><span class="p">(</span><span class="s2">&quot;Survived&quot;</span><span class="p">,</span><span class="s2">&quot;Pclass&quot;</span><span class="p">,</span><span class="s2">&quot;Sex&quot;</span><span class="p">,</span> <span class="s2">&quot;Age&quot;</span><span class="p">,</span><span class="s2">&quot;SibSp&quot;</span><span class="p">,</span><span class="s2">&quot;Parch&quot;</span><span class="p">,</span><span class="s2">&quot;Fare&quot;</span><span class="p">)])</span>
+
+<span class="c1">#Create the model</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">glm</span><span class="p">(</span><span class="n">Survived</span><span class="o">~</span><span class="n">Pclass</span> <span class="o">+</span> <span class="n">Sex</span> <span class="o">+</span> <span class="n">Age</span> <span class="o">+</span> <span class="n">SibSp</span> <span class="o">+</span> <span class="n">Parch</span> <span class="o">+</span> <span class="n">Fare</span><span class="p">,</span> <span class="n">family</span><span class="o">=</span><span class="n">binomial</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">train</span><span class="p">)</span>
+<span class="n">summary</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The summary output shows that the last two variables are not significant
+so we can delete them and rerun the model. Doing this gives us a model
+with only significant variables and slightly reduces the AIC.</p>
+<a class="reference internal image-reference" href="../../_images/summary.PNG"><img alt="../../_images/summary.PNG" src="../../_images/summary.PNG" style="width: 600px;" /></a>
+<p>We can also use the anova() function to evaluate the model. The
+difference between summary() and anova() is that the anova() function
+tests the models in sequential order. Starting with Survived ~ 1 and at
+each step adding another variable until the complete model is tested.
+This means your variables will <em>not</em> have the same p-values for the two
+methods. What you will notice though is that the null and residual
+deviances in the summary match the first and last deviances in the
+“Resid. Dev” column for the anova output. In the anova, we can see how
+much the residual deviance changes by adding each additional variable.
+The last two variables have very little impact.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">anova</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">test</span><span class="o">=</span><span class="s2">&quot;Chisq&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<a class="reference internal image-reference" href="../../_images/anova.PNG"><img alt="../../_images/anova.PNG" src="../../_images/anova.PNG" style="width: 600px;" /></a>
+<p>If we want to look at the classification results we can create a
+confusion matrix. We get the same matrix with or without the
+non-siginificant variables (Parch and Fare). So for both models we have
+an 80% ( <span class="math notranslate nohighlight">\(\frac{364+210}{714}\)</span>) accuracy rate where the instances on the diagonal have been correctly
+classified.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>pred &lt;- predict(model, type = &#39;response&#39;)
+cm&lt;-table(train$Survived, pred &gt; 0.5)
+colnames(cm)&lt;-c(&quot;Pred Died&quot;, &quot;Pred Surv&quot;)
+rownames(cm)&lt;-c(&quot;Died&quot;, &quot;Survived&quot;)
+cm
+</pre></div>
+</div>
+<p>Resulting confusion matrix:</p>
+<a class="reference internal image-reference" href="../../_images/confusionMatrix.PNG"><img alt="../../_images/confusionMatrix.PNG" src="../../_images/confusionMatrix.PNG" style="width: 250px;" /></a>
+<p>We can also look at the ROC curve and calculate the AUC (area under the
+ROC curve) to evaluate the quality of our model. The ROC curve shows the
+relationship between the <em>true positive rate</em> and <em>false positive rate</em>
+as the threshold of the classifier changes. The <em>true positive rate</em> is
+the number of correctly classed positive instances (survivors) divided
+by the total number of positive instances. As the rate of instances
+correctly classed as “positive” increases than the rate of false
+positives also increases and vice versa. We can also label the axes as
+<em>sensitivity</em> and (1- <em>specificity</em>). So we see that as sensitivity
+increases, (1-specificity) increases and so specificity (the <em>true
+negative rate</em>) decreases.</p>
+<p>The AUC gives the probability that the model will assign a randomly
+chosen positive instance (1 or survived) a higher score, in our case a
+probability, than a randomly chosen negative instance (0 or died). We
+want the AUC to be closer to 1 than 0.5 and in a perfect world it would
+be 1. It can also be used to compare different models. For our model the
+AUC is 0.86 which is considered to be a good level of accuracy, anything
+less than 0.7 would be considered poor. The 45° line represents
+classification by random guessing with an AUC equal to 0.5. Therefore,
+no model should have an AUC of less than 0.5 whereby the classifier
+would be worse than chosing randomly. Ideally the curve will arch
+towards the left-hand and top borders of the plotting area like our
+case.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>library(ROCR)
+ROCpred &lt;- prediction(pred, train$$Survived)
+ROCperf &lt;- performance(ROCpred, measure=&#39;tpr&#39;, x.measure=&#39;fpr&#39;)
+#tpr=true positive rate, fpr=false positive rate
+
+#Plot the graph
+plot(ROCperf, colorize = TRUE, ylab=&quot;True positive rate / Sensitivity&quot;, xlab=&quot;False positive rate / (1-Specificity)&quot;)
+abline(c(0,0),1)
+
+#Calculate &quot;Accuracy Under the Curve&quot;
+auc &lt;- performance(ROCpred, measure = &quot;auc&quot;)
+auc &lt;- auc@y.values[[1]]
+auc
+</pre></div>
+</div>
+<p>Resulting ROC curve:</p>
+<a class="reference internal image-reference" href="../../_images/Rplot.png"><img alt="../../_images/Rplot.png" src="../../_images/Rplot.png" style="width: 600px;" /></a>
+<section id="references">
+<h3>References<a class="headerlink" href="#references" title="Permalink to this heading">¶</a></h3>
+<p><a class="reference external" href="http://www.stat.cmu.edu/%7Ecshalizi/uADA/12/lectures/ch12.pdf">http://www.stat.cmu.edu/%7Ecshalizi/uADA/12/lectures/ch12.pdf</a></p>
+<p>Numerical optimisation:</p>
+<p><a class="reference external" href="http://cs229.stanford.edu/notes/cs229-notes1.pdf#page=20">http://cs229.stanford.edu/notes/cs229-notes1.pdf#page=20</a></p>
+<p><a class="reference external" href="https://cise.ufl.edu/class/cis6930sp10esl/downloads/LogisticRegression.pdf">https://cise.ufl.edu/class/cis6930sp10esl/downloads/LogisticRegression.pdf</a></p>
+<p>ROC, AUC:</p>
+<p><a class="reference external" href="https://ccrma.stanford.edu/workshops/mir2009/references/ROCintro.pdf">https://ccrma.stanford.edu/workshops/mir2009/references/ROCintro.pdf</a></p>
+</section>
+</section>
+</section>
+
+<div class="section">
+    
+
+<div class="section">
+  <span style="float: left">
+     Previous:
+    
+    <a href="../svm/">
+       Support Vector Machines
+    </a>
+    
+  </span>
+  <span>&nbsp;</span>
+  <span style="float: right">
+     Next: 
+    <a href="../spatialDemo/">
+      Spatial Demo 
+    </a>
+    
+  </span>
+</div>
+  
+</div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../"></a></h1>
+
+
+
+
+
+
+
+
+  
+<h2>
+   
+  09 May 2018 
+</h2>
+
+<ul>
+   
+<li id="author">
+  <span
+    >Author:</span
+  >
+   
+  <a href="../../blog/author/keri-sime/">Keri Sime</a>  
+</li>
+     
+</ul>
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../about/">About Keri Sime</a></li>
+</ul>
+
+
+<h3>
+  <a href="../../blog/">Recent Posts</a>
+</h3>
+<ul>
+   
+  <li>
+    <a href="../spatialDemo/"
+      >25 April - Spatial Demo</a
+    >
+  </li>
+  
+  <li>
+    <a href="../svm/"
+      >27 February - Support Vector Machines</a
+    >
+  </li>
+  
+</ul>
+
+<h3>
+  <a href="../../blog/archive/">Archives</a>
+</h3>
+<ul>
+   
+  <li>
+    <a href="../../blog/2022/">2022 (1)</a>
+  </li>
+    
+  <li>
+    <a href="../../blog/2018/">2018 (2)</a>
+  </li>
+   
+</ul>
+
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search/" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2022, Keri Sime.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 5.0.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../../_sources/_posts/logreg.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

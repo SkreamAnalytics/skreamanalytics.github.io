@@ -1,0 +1,487 @@
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+    <title>Support Vector Machines &#8212;   documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css" />
+    <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <link rel="author" title="About these documents" href="../../about/" />
+    <link rel="index" title="Index" href="../../genindex/" />
+    <link rel="search" title="Search" href="../../search/" /> 
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+  
+<style type="text/css">
+  ul.ablog-archive {
+    list-style: none;
+    overflow: auto;
+    margin-left: 0px;
+  }
+  ul.ablog-archive li {
+    float: left;
+    margin-right: 5px;
+    font-size: 80%;
+  }
+  ul.postlist a {
+    font-style: italic;
+  }
+  ul.postlist-style-disc {
+    list-style-type: disc;
+  }
+  ul.postlist-style-none {
+    list-style-type: none;
+  }
+  ul.postlist-style-circle {
+    list-style-type: circle;
+  }
+</style>
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+             <section id="support-vector-machines">
+<h1>Support Vector Machines<a class="headerlink" href="#support-vector-machines" title="Permalink to this heading">¶</a></h1>
+<section id="theory">
+<h2>Theory<a class="headerlink" href="#theory" title="Permalink to this heading">¶</a></h2>
+<p>The support vector machine (SVM) is a classification method which groups
+similar individuals into classes depending on their characteristics. The
+example below left shows 10 individuals classed either as positive (+)
+or negative (-). The individuals can be divided into two classes by
+putting a straight line between them, they are linearly separable.
+However, several different lines can be fitted and we want to choose the
+best line. The support vector machine does this by maximizing the
+distance between classes in order to minimize the probability that a new
+individual is misclassified by using a <em>maximum margin separator</em>. The
+maximum margin separator is a decision boundary which maximizes the
+distance between the <strong>closest</strong> points to the line and the line itself.</p>
+<a class="reference internal image-reference" href="../../_images/svm.png"><img alt="../../_images/svm.png" src="../../_images/svm.png" style="width: 600px;" /></a>
+<p>Fitting a two-dimensional maximum margin separator only works in
+linearly separable data sets such as in the illustration above left. If
+a data set is not linearly separable in two-dimensional space, such as
+the illustration above right, we can map the individuals into a higher
+dimensional space and then linearly separate them in this higher
+dimension. This process can be computationally expensive so we use the
+<em>kernel trick</em> which avoids the need to explicity map the individuals
+into another space. The kernel trick implicity maps the data by
+calculating the dot product of all pairs in the mapped space. In most
+cases, we can continue to map the data, implicity, into higher and
+higher dimensions until we finally arrive at a linearly separable
+solution.</p>
+<p>For an excellent introduction to the mathematics behind support vector
+machines and the kernel trick, I can highly recommend the online <a class="reference external" href="https://ocw.mit.edu/courses/electrical-engineering-and-computer-science/6-034-artificial-intelligence-fall-2010/lecture-videos/lecture-16-learning-support-vector-machines/">MIT
+lecture</a>
+from Patrick Winston. This is much more enjoyable and easier than
+reading a written version. Very generally, in order to maximize the
+margin separator, the SVM minimizes a Lagrangian function resulting in a
+quadratic optimization problem with a single global maximum. This
+resulting problem can then be solved using mathematical programming.</p>
+<p>However, this lecture does not explain how the problem is actually
+solved by machine learning. That is to say, how an algorithm iteratively
+solves the quadratic optimization problem. The most common algorithm for
+solving the SVM optimization problem is the <em>Sequential Minimal
+Optimization</em> (SMO) method which breaks the problem into sub-problems
+that can be solved analytically rather than numerically. In John C.
+Platt’s
+<a class="reference external" href="https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/tr-98-14.pdf">article</a>
+<em>Sequential Minimal Optimization: A Fast Algorithm for Training Support
+Vector Machines</em> (1998) he defines a more complete optimization problem
+and develops the SMO method which solves the smallest possible
+optimization problem at each step. Usually this is for just two Lagrange
+multipliers at each step which can be done analytically instead of
+numerically. The algorithm first calculates the constraints on the
+multipliers and then sovles the optimization problem, holding all other
+multipliers constant. Although there are many sub-problems each of them
+is solved rapidly, since they are solved analytically, and so the
+overall performance is fast. The algorithm also uses a heuristic to
+choose which multipliers to optimize at each step in order to increase
+efficiency.</p>
+<section id="advantages-and-disadvantages">
+<h3>Advantages and Disadvantages<a class="headerlink" href="#advantages-and-disadvantages" title="Permalink to this heading">¶</a></h3>
+<p>The SVM works well on a wide range of problems. It is robust to noise
+since it only considers the individuals closest to the maximum margin
+separator. This makes it is less prone to overfitting a model. It also
+works well with smaller training subsets because, again, it only uses
+some of the individuals to calculate the maximum margin separator.
+Another advantage is that it does not become trapped in local minima
+because the optimization problem is quadratic. However, the SVM is not
+without disadvantages. The SVM is computationally expensive meaning that
+learning takes a long time for very large data sets. Also, it is a
+binary classifier so in the case of multi-class classification we must
+do multiple pair-wise classifications - one class against all others,
+for each class - increasing the learning time. Lastly, the kernel trick
+is not necessarily as simple as it first seems since the choice of
+kernel depends on the data set. Furthermore, key parameters need to be
+set correctly meaning that several models may need to be tested before
+finding a satisfactory model.</p>
+</section>
+</section>
+<section id="code">
+<h2>Code<a class="headerlink" href="#code" title="Permalink to this heading">¶</a></h2>
+<p>For a basic introduction into SVM in R we’ll use the classic Fisher’s
+Iris data. To get some background on this data set use <em>?iris</em>.</p>
+<section id="data-visualisation">
+<h3>1. Data Visualisation<a class="headerlink" href="#data-visualisation" title="Permalink to this heading">¶</a></h3>
+<p>Let’s start by looking at the data so that we know what we’re working
+with. This code plots the classes <em>setosa</em>, <em>versicolor</em> and <em>virginica</em>
+for each variable combination.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">n</span><span class="o">=</span><span class="n">nrow</span><span class="p">(</span><span class="n">iris</span><span class="p">)</span> <span class="c1">#get the number of rows in the data set</span>
+
+<span class="c1">#Create a colour vector for each class</span>
+<span class="n">irisCol</span><span class="o">=</span><span class="n">rep</span><span class="p">(</span><span class="s1">&#39;green&#39;</span><span class="p">,</span><span class="n">n</span><span class="p">)</span>
+<span class="n">irisCol</span><span class="p">[</span><span class="n">which</span><span class="p">(</span><span class="n">iris</span><span class="p">[,</span><span class="mi">5</span><span class="p">]</span><span class="o">==</span><span class="s2">&quot;setosa&quot;</span><span class="p">)]</span><span class="o">&lt;-</span><span class="s1">&#39;red&#39;</span>
+<span class="n">irisCol</span><span class="p">[</span><span class="n">which</span><span class="p">(</span><span class="n">iris</span><span class="p">[,</span><span class="mi">5</span><span class="p">]</span><span class="o">==</span><span class="s2">&quot;versicolor&quot;</span><span class="p">)]</span><span class="o">&lt;-</span><span class="s1">&#39;blue&#39;</span>
+
+<span class="c1">#Create a symbol vector for each class</span>
+<span class="n">irisChar</span><span class="o">=</span><span class="n">rep</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="n">n</span><span class="p">)</span>
+<span class="n">irisChar</span><span class="p">[</span><span class="n">which</span><span class="p">(</span><span class="n">iris</span><span class="p">[,</span><span class="mi">5</span><span class="p">]</span><span class="o">==</span><span class="s2">&quot;setosa&quot;</span><span class="p">)]</span><span class="o">&lt;-</span><span class="mi">20</span>
+<span class="n">irisChar</span><span class="p">[</span><span class="n">which</span><span class="p">(</span><span class="n">iris</span><span class="p">[,</span><span class="mi">5</span><span class="p">]</span><span class="o">==</span><span class="s2">&quot;versicolor&quot;</span><span class="p">)]</span><span class="o">&lt;-</span><span class="mi">4</span>
+
+<span class="c1">#Plot the scatter graphs for each combination of the variables</span>
+<span class="n">par</span><span class="p">(</span><span class="n">mfrow</span><span class="o">=</span><span class="n">c</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">))</span> <span class="c1">#set the layout</span>
+<span class="k">for</span><span class="p">(</span> <span class="n">i</span> <span class="ow">in</span> <span class="mi">1</span><span class="p">:</span><span class="mi">3</span><span class="p">){</span>
+  <span class="k">for</span><span class="p">(</span><span class="n">j</span> <span class="ow">in</span> <span class="mi">2</span><span class="p">:</span><span class="mi">4</span><span class="p">){</span>
+    <span class="k">if</span><span class="p">(</span><span class="n">i</span><span class="o">&lt;</span><span class="n">j</span><span class="p">){</span>
+      <span class="n">plot</span><span class="p">(</span><span class="n">iris</span><span class="p">[,</span><span class="n">i</span><span class="p">],</span> <span class="n">iris</span><span class="p">[,</span><span class="n">j</span><span class="p">],</span> <span class="n">pch</span><span class="o">=</span><span class="n">irisChar</span><span class="p">,</span> <span class="n">col</span><span class="o">=</span><span class="n">irisCol</span><span class="p">,</span>
+          <span class="n">xlab</span><span class="o">=</span><span class="n">colnames</span><span class="p">(</span><span class="n">iris</span><span class="p">)[</span><span class="n">i</span><span class="p">],</span><span class="n">ylab</span><span class="o">=</span><span class="n">colnames</span><span class="p">(</span><span class="n">iris</span><span class="p">)[</span><span class="n">j</span><span class="p">])</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Below, we can see that setosa, except in the first graph, is linearly
+separable fromt the other two types of iris for each combination of
+variables. For the other two types, versicolor and virginica, we can see
+that the classes overlap. In paritcular, the combination of sepal width
+and sepal length does a particularly poor job of differentiating the
+two.</p>
+<p>Legend : <em>setosa , versicolor , virginica</em></p>
+<a class="reference internal image-reference" href="../../_images/irisPlots.png"><img alt="../../_images/irisPlots.png" src="../../_images/irisPlots.png" style="width: 600px;" /></a>
+<p>Since this data set is multiclass and not linearly separable, the SVM
+will have to do pair-wise binary classification <em>and</em> also use a kernal
+function to implicity map the observations into a high dimension.
+Luckily for us, this is done automatically.</p>
+</section>
+<section id="classification">
+<h3>2. Classification<a class="headerlink" href="#classification" title="Permalink to this heading">¶</a></h3>
+<p>Firstly let’s build a test and data training set before training the
+classfier. Here, we’ll use the package <em>kernlab</em> but the package <em>e1071</em>
+also has an SVM function. The advantage of <em>kernlab</em> is the choice of
+kernel functions and the ability to create your own kernels. It also
+produces a much more attractive plot, unfortunately the plot only works
+for binary classification.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1">#Build test and train sub-sets (sampling evenly from each type)</span>
+<span class="n">srows</span><span class="o">=</span><span class="n">c</span><span class="p">(</span><span class="n">sample</span><span class="p">(</span><span class="mi">1</span><span class="p">:</span><span class="mi">50</span><span class="p">,</span><span class="mi">30</span><span class="p">),</span> <span class="n">sample</span><span class="p">(</span><span class="mi">51</span><span class="p">:</span><span class="mi">100</span><span class="p">,</span><span class="mi">30</span><span class="p">),</span><span class="n">sample</span><span class="p">(</span><span class="mi">101</span><span class="p">:</span><span class="mi">150</span><span class="p">,</span><span class="mi">30</span><span class="p">))</span>
+<span class="n">irisTrain</span><span class="o">=</span><span class="n">iris</span><span class="p">[</span><span class="n">srows</span><span class="p">,];</span><span class="n">irisTest</span><span class="o">=</span><span class="n">iris</span><span class="p">[</span><span class="o">-</span><span class="n">srows</span><span class="p">,]</span>
+
+<span class="c1"># Load the kernlab package</span>
+<span class="n">library</span><span class="p">(</span><span class="n">kernlab</span><span class="p">)</span>
+
+<span class="c1">#Train the classifier</span>
+<span class="nb">filter</span> <span class="o">&lt;-</span> <span class="n">ksvm</span><span class="p">(</span><span class="n">Species</span><span class="o">~.</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">irisTrain</span><span class="p">,</span> <span class="n">kernel</span><span class="o">=</span><span class="s1">&#39;rbfdot&#39;</span><span class="p">,</span><span class="n">C</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">cross</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+
+<span class="c1"># Attributes that you can access</span>
+<span class="n">attributes</span><span class="p">(</span><span class="nb">filter</span><span class="p">)</span> <span class="c1"># list of all attributes</span>
+<span class="n">SVindex</span><span class="p">(</span><span class="nb">filter</span><span class="p">)</span> <span class="c1"># the indices of all of the support vectors</span>
+<span class="n">alphaindex</span><span class="p">(</span><span class="nb">filter</span><span class="p">)[[</span><span class="mi">1</span><span class="p">]]</span> <span class="c1"># the support vector indices for the first of the three boundaries.</span>
+
+<span class="c1">#Predict the values for the test subset</span>
+<span class="n">pred</span><span class="o">&lt;-</span><span class="n">predict</span><span class="p">(</span><span class="nb">filter</span><span class="p">,</span> <span class="n">irisTest</span><span class="p">[,</span><span class="o">-</span><span class="mi">5</span><span class="p">])</span>
+</pre></div>
+</div>
+<p>The first parameter in the ksvm() function, Species~. , indicates that
+the column labelled ‘Species’ is the independant variable and the ‘.’
+indicates that we use all the other columns in the input data set. The
+kernel used is <em>rbfdot</em>, the Gaussian radial basis kernel function, this
+is a general purpose kernel with no a priori assumptions about the data.
+Information on the choice of kernel functions can be found in the
+package documentation. The choice of kernel impacts the quality of the
+results and not all kernels are appropriate for all data types, even the
+general purpose ones. <em>C</em> is the cost of constraint violation, the
+default value is 1. Finally, <em>cross</em>= k indicates a k-fold
+cross-validation is to be done on the training data. For classification,
+the quality measure is the accuracy rate.</p>
+<p>By default the dependant and independant variables are scaled to zero
+mean and unit variance but an argument <em>scaled</em> also allows user-defined
+scaling functions. The output of <em>predict()</em> accounts for scaling and
+returns the unscaled predictions.</p>
+</section>
+<section id="validation">
+<h3>3. Validation<a class="headerlink" href="#validation" title="Permalink to this heading">¶</a></h3>
+<p>This code displays the confusion matrix and calculates the predication
+accuray which allows the classification quality to be evaluated.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1">#Display the confusion matrix</span>
+<span class="n">table</span><span class="p">(</span><span class="n">pred</span><span class="p">,</span><span class="n">irisTest</span><span class="p">[,</span><span class="mi">5</span><span class="p">])</span>
+<span class="c1"># Calculate accuracy</span>
+<span class="nb">sum</span><span class="p">(</span><span class="n">pred</span><span class="o">==</span><span class="n">irisTest</span><span class="p">[,</span><span class="mi">5</span><span class="p">])</span><span class="o">/</span><span class="n">length</span><span class="p">(</span><span class="n">pred</span><span class="p">)</span><span class="o">*</span><span class="mi">100</span>
+</pre></div>
+</div>
+<p>The SVM has done fairly well with a 97% accuracy rate and 2
+misclassified observations.</p>
+<a class="reference internal image-reference" href="../../_images/output1.PNG"><img alt="../../_images/output1.PNG" src="../../_images/output1.PNG" style="width: 300px;" /></a>
+<p>To see an example of the plot available in the <em>kernlab</em> package we are
+going to modify the data so that there are only two classes and choose
+only two columns (features) to pass to the function.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span># First group the versicolor and virignica examples together.
+irisMod&lt;-iris
+levels(irisMod$Species)[levels(irisMod$Species)==&quot;virginica&quot;] &lt;- &quot;vers_virg&quot;
+levels(irisMod$Species)[levels(irisMod$Species)==&quot;versicolor&quot;] &lt;- &quot;vers_virg&quot;
+
+#Create the train and test data sets
+srows=c(sample(1:50,30),sample(51:150,30))
+irisTrain=irisMod[srows,] ; irisTest=irisMod[-srows,]
+
+#Train the classifier
+filter&lt;- ksvm(Species~Petal.Length + Petal.Width, data=irisTrain, kernel=&#39;rbfdot&#39;, kpar=list(sigma=0.05),C=5, cross=3)
+
+par(mfrow=c(1,1))# undoes the layout change for the intial graphs
+plot(filter, data=irisTrain)
+irisTrain[SVindex(filter),-c(1,2)] #get the support vectors
+
+#Check accuracy
+pred=predict(filter, irisTest[,-5])
+table(pred,irisTest[,5])
+sum(pred==irisTest[,5])/length(pred)*100
+</pre></div>
+</div>
+<p>For my train and test data sets I had a 99% accuracy rate which is not
+suprising given the visually nicely separated classes. Your results will
+vary since you will not have the same train and test data sets. The
+model, graphed below, only had 6 support vectors. Try removing the
+<em>kpar</em> argument, the results are nowhere near as nice. Although this
+gave me a 100% accuracy rate, it resulted in 22 support vectors and a
+graph showing that the model was overfitted. Note that the support
+vector markers are coloured black in the graph.</p>
+<a class="reference internal image-reference" href="../../_images/svmPlot2.png"><img alt="../../_images/svmPlot2.png" src="../../_images/svmPlot2.png" style="width: 600px;" /></a>
+</section>
+<section id="tuning">
+<h3>4. Tuning<a class="headerlink" href="#tuning" title="Permalink to this heading">¶</a></h3>
+<p>How did I know I would get a better result by adding the kernel
+parameter of sigma=0.05? By trial and error! This is not a very time
+effective method and so a package for tuning models from the kernlab
+package has been created called <em>mlr</em>. The associated github
+<a class="reference external" href="http://mlr-org.github.io/mlr-tutorial/release/html/tune/index.html">tutorial</a>
+is extremely well explained.</p>
+<p>For our model we have two values to tune: <em>sigma</em> from the Gaussian
+radial basis function (below) and <em>C</em>, the cost of violating a
+constraint.</p>
+<div class="math notranslate nohighlight">
+\[k(x,x') = \exp(-\sigma\lVert x-x' \rVert^2)\]</div>
+<p>To choose a possible combination of the parameters, we will first
+specify the possible values then iterate through the different
+combinations of parameters, extracting the cross-validation error of the
+SVM at each iteration.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Define possible parameter values</span>
+<span class="n">clist</span> <span class="o">&lt;-</span> <span class="mi">2</span><span class="o">^</span><span class="n">seq</span><span class="p">(</span><span class="o">-</span><span class="mi">8</span><span class="p">,</span><span class="mi">8</span><span class="p">)</span> <span class="p">;</span> <span class="n">nc</span> <span class="o">&lt;-</span> <span class="n">length</span><span class="p">(</span><span class="n">clist</span><span class="p">)</span>
+<span class="n">sigmalist</span> <span class="o">&lt;-</span> <span class="mi">2</span><span class="o">^</span><span class="n">seq</span><span class="p">(</span><span class="o">-</span><span class="mi">5</span><span class="p">,</span><span class="mi">5</span><span class="p">)</span> <span class="p">;</span> <span class="n">nsigma</span> <span class="o">&lt;-</span> <span class="n">length</span><span class="p">(</span><span class="n">sigmalist</span><span class="p">)</span>
+
+<span class="c1">#Initialise the matrix of errors</span>
+<span class="n">error</span> <span class="o">&lt;-</span> <span class="n">matrix</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="n">nrow</span><span class="o">=</span><span class="n">nc</span><span class="p">,</span><span class="n">ncol</span><span class="o">=</span><span class="n">nsigma</span><span class="p">)</span>
+
+<span class="c1">#Calculate the error for each combination</span>
+<span class="k">for</span> <span class="p">(</span><span class="n">i</span> <span class="ow">in</span> <span class="n">seq</span><span class="p">(</span><span class="n">nc</span><span class="p">))</span> <span class="p">{</span>
+  <span class="k">for</span> <span class="p">(</span><span class="n">j</span> <span class="ow">in</span> <span class="n">seq</span><span class="p">(</span><span class="n">nsigma</span><span class="p">))</span> <span class="p">{</span>
+    <span class="nb">filter</span> <span class="o">&lt;-</span> <span class="n">ksvm</span><span class="p">(</span><span class="n">Species</span><span class="o">~</span><span class="n">Petal</span><span class="o">.</span><span class="n">Length</span> <span class="o">+</span> <span class="n">Petal</span><span class="o">.</span><span class="n">Width</span><span class="p">,</span><span class="n">data</span><span class="o">=</span><span class="n">irisTrain</span><span class="p">,</span><span class="n">kernel</span><span class="o">=</span><span class="s1">&#39;rbfdot&#39;</span><span class="p">,</span><span class="n">kpar</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="n">sigma</span><span class="o">=</span><span class="n">sigmalist</span><span class="p">[</span><span class="n">j</span><span class="p">]),</span><span class="n">C</span><span class="o">=</span><span class="n">clist</span><span class="p">[</span><span class="n">i</span><span class="p">],</span><span class="n">cross</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+    <span class="n">error</span><span class="p">[</span><span class="n">i</span><span class="p">,</span><span class="n">j</span><span class="p">]</span> <span class="o">&lt;-</span> <span class="n">cross</span><span class="p">(</span><span class="nb">filter</span><span class="p">)</span> <span class="c1">#returns the cross-validation error</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="c1"># Graph the result</span>
+<span class="n">library</span><span class="p">(</span><span class="n">lattice</span><span class="p">)</span> <span class="c1">#load the package lattice</span>
+<span class="n">dimnames</span><span class="p">(</span><span class="n">error</span><span class="p">)</span> <span class="o">&lt;-</span> <span class="nb">list</span><span class="p">(</span><span class="n">C</span><span class="o">=</span><span class="nb">round</span><span class="p">(</span><span class="n">clist</span><span class="p">,</span><span class="mi">3</span><span class="p">),</span><span class="n">sigma</span><span class="o">=</span><span class="nb">round</span><span class="p">(</span><span class="n">sigmalist</span><span class="p">,</span><span class="mi">3</span><span class="p">))</span> <span class="c1"># Add labels</span>
+<span class="n">jet</span><span class="o">.</span><span class="n">colors</span> <span class="o">&lt;-</span>  <span class="n">colorRampPalette</span><span class="p">(</span><span class="n">c</span><span class="p">(</span><span class="s2">&quot;#00007F&quot;</span><span class="p">,</span> <span class="s2">&quot;blue&quot;</span><span class="p">,</span> <span class="s2">&quot;#007FFF&quot;</span><span class="p">,</span> <span class="s2">&quot;cyan&quot;</span><span class="p">,</span> <span class="s2">&quot;#7FFF7F&quot;</span><span class="p">,</span> <span class="s2">&quot;yellow&quot;</span><span class="p">,</span> <span class="s2">&quot;#FF7F00&quot;</span><span class="p">,</span> <span class="s2">&quot;red&quot;</span><span class="p">,</span> <span class="s2">&quot;#7F0000&quot;</span><span class="p">))</span> <span class="c1"># Customise the color ramp</span>
+<span class="n">levelplot</span><span class="p">(</span><span class="n">error</span><span class="p">,</span><span class="n">scales</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="n">rot</span><span class="o">=</span><span class="mi">90</span><span class="p">)),</span><span class="n">xlab</span><span class="o">=</span><span class="s2">&quot;C&quot;</span><span class="p">,</span><span class="n">ylab</span><span class="o">=</span><span class="s1">&#39;sigma&#39;</span><span class="p">,</span><span class="n">main</span><span class="o">=</span><span class="s2">&quot;Cross-validation Error Rate&quot;</span><span class="p">,</span><span class="n">col</span><span class="o">.</span><span class="n">regions</span> <span class="o">=</span> <span class="n">jet</span><span class="o">.</span><span class="n">colors</span><span class="p">)</span><span class="c1"># Plot the error rate</span>
+</pre></div>
+</div>
+<p>You should have something similar to this:</p>
+<a class="reference internal image-reference" href="../../_images/svmPlot3.png"><img alt="../../_images/svmPlot3.png" src="../../_images/svmPlot3.png" style="width: 600px;" /></a>
+<p>The squares in dark blue have a zero cross-validation error rate and so
+these combinations are possible candidates for the sigma and <em>C</em> values.
+Let’s see what we get by auto-tuning for the same specified values.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Auto-tuning</span>
+<span class="n">library</span><span class="p">(</span><span class="n">mlr</span><span class="p">)</span> <span class="c1">#load the package</span>
+
+<span class="c1"># Create a discrete parameter set</span>
+<span class="n">ps</span> <span class="o">=</span> <span class="n">makeParamSet</span><span class="p">(</span>
+  <span class="n">makeDiscreteParam</span><span class="p">(</span><span class="s2">&quot;C&quot;</span><span class="p">,</span> <span class="n">values</span> <span class="o">=</span> <span class="n">clist</span><span class="p">),</span>
+  <span class="n">makeDiscreteParam</span><span class="p">(</span><span class="s2">&quot;sigma&quot;</span><span class="p">,</span> <span class="n">values</span> <span class="o">=</span> <span class="n">sigmalist</span><span class="p">)</span>
+<span class="p">)</span>
+
+<span class="c1"># Create the search grid using default values</span>
+<span class="n">ctrl</span> <span class="o">=</span> <span class="n">makeTuneControlGrid</span><span class="p">()</span>
+
+<span class="c1">#Specifiy random sampling with max of 10 iterations</span>
+<span class="n">ctrl</span> <span class="o">=</span> <span class="n">makeTuneControlRandom</span><span class="p">(</span><span class="n">maxit</span> <span class="o">=</span> <span class="mi">10</span><span class="n">L</span><span class="p">)</span>
+
+<span class="c1"># Create the task</span>
+<span class="n">classif</span><span class="o">.</span><span class="n">task</span> <span class="o">=</span> <span class="n">makeClassifTask</span><span class="p">(</span><span class="nb">id</span> <span class="o">=</span> <span class="s2">&quot;irisMod&quot;</span><span class="p">,</span> <span class="n">data</span> <span class="o">=</span> <span class="n">irisMod</span><span class="p">,</span> <span class="n">target</span> <span class="o">=</span> <span class="s2">&quot;Species&quot;</span><span class="p">)</span>
+
+<span class="c1"># Specify the resampling description : 3-fold cross-validation as above</span>
+<span class="n">rdesc</span> <span class="o">=</span> <span class="n">makeResampleDesc</span><span class="p">(</span><span class="s2">&quot;CV&quot;</span><span class="p">,</span> <span class="n">iters</span> <span class="o">=</span> <span class="mi">3</span><span class="n">L</span><span class="p">)</span>
+
+<span class="c1"># Tune the model</span>
+<span class="n">res</span> <span class="o">=</span> <span class="n">tuneParams</span><span class="p">(</span><span class="s2">&quot;classif.ksvm&quot;</span><span class="p">,</span> <span class="n">task</span> <span class="o">=</span> <span class="n">classif</span><span class="o">.</span><span class="n">task</span><span class="p">,</span> <span class="n">resampling</span> <span class="o">=</span> <span class="n">rdesc</span><span class="p">,</span><span class="n">par</span><span class="o">.</span><span class="n">set</span> <span class="o">=</span> <span class="n">ps</span><span class="p">,</span> <span class="n">control</span> <span class="o">=</span> <span class="n">ctrl</span><span class="p">)</span>
+<span class="n">res</span> <span class="c1"># to get the resulting parameters</span>
+</pre></div>
+</div>
+<p>Since we have defined a discrete parameter set with the default grid
+values, the search grid simply covers all the combinations of the sigma
+and <em>C</em> values. I set a random sampling parameter with a maximum of 10
+iterations to speed things up, makeTuneControlRandom(), but this is not
+really necessary for such a small search grid. The quality of each
+combination is measured by the default measure, the <em>mean
+misclassification error</em>. This is the mean number of misclassified
+examples for the 3 cross-validation iterations.</p>
+<p>In my case, the auto-tuning process returned 0.0625 for sigma and 2 for
+<em>C</em>. This falls in the dark blue part of my grid. When I re-ran the SVM
+with these parameters it increased the number of support vectors to 8
+for a 100% accuracy rate without any overfitting showing on the plot.
+Not suprisingly using the random sampling returns a different answer
+each time. However, even searching the full grid results in different
+results since the k-fold cross-validation uses random sampling. That
+said, my results fell in the dark blue section of the graph and
+generally returned low values of sigma (&lt;1).</p>
+</section>
+</section>
+</section>
+
+<div class="section">
+    
+
+<div class="section">
+  <span style="float: left">
+    
+  </span>
+  <span>&nbsp;</span>
+  <span style="float: right">
+     Next: 
+    <a href="../logreg/">
+      Logistic Regression 
+    </a>
+    
+  </span>
+</div>
+  
+</div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../"></a></h1>
+
+
+
+
+
+
+
+
+  
+<h2>
+   
+  27 February 2018 
+</h2>
+
+<ul>
+   
+<li id="author">
+  <span
+    >Author:</span
+  >
+   
+  <a href="../../blog/author/keri-sime/">Keri Sime</a>  
+</li>
+     
+</ul>
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../about/">About Keri Sime</a></li>
+</ul>
+
+
+<h3>
+  <a href="../../blog/">Recent Posts</a>
+</h3>
+<ul>
+   
+  <li>
+    <a href="../spatialDemo/"
+      >25 April - Spatial Demo</a
+    >
+  </li>
+  
+  <li>
+    <a href="../logreg/"
+      >09 May - Logistic Regression</a
+    >
+  </li>
+  
+</ul>
+
+<h3>
+  <a href="../../blog/archive/">Archives</a>
+</h3>
+<ul>
+   
+  <li>
+    <a href="../../blog/2022/">2022 (1)</a>
+  </li>
+    
+  <li>
+    <a href="../../blog/2018/">2018 (2)</a>
+  </li>
+   
+</ul>
+
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search/" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2022, Keri Sime.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 5.0.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../../_sources/_posts/svm.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

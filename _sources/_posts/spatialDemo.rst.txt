@@ -1,0 +1,92 @@
+.. post:: April 25, 2022
+   :author: Keri Sime
+
+Spatial Demo
+============
+
+Working for a utilties company, we are often interested in where our
+services are located. Tools such as ArcGis and even Power BI allow us to
+visualise these locations. However, sometimes it can be useful to work
+in Jupyter notebooks, especially when that is the tool you are already
+using. Below is a simple demonstration for plotting New Zealand 2018
+census data in a Jupyter notebook.
+
+Set Up
+------
+
+The packages *geopandas* and *leafmap* are required for this
+demonstration. I had issues installing *geopandas* using the standard
+``pip install geopandas`` so manually installed the wheels for *gdal*,
+*fiona* and finally *geopandas* from `Christopher Gohlke’s unofficial
+binaries page <https://www.lfd.uci.edu/~gohlke/pythonlibs/#jppype>`__
+before running ``pip install Downloads\package_name.wh`` in the
+preceeding order.
+
+The boundary data used is sourced from the `Statistics New Zeaaland
+Geographic Data Service <https://datafinder.stats.govt.nz/>`__. You’ll
+need to find the ’Statistical Area 1 2018 (generalised) dataset. Select
+the CSV tab then choose the *WGS 84 (EPSG:4326 Geographic)* projection.
+SA1 (Statistical Area 1) geographies have an ideal size of 100-200
+residents and a maximum population of about 500. At this level of
+granularity, there is much less supressed data than at the finer
+granularity of meshblocks.
+
+The various census datasets can also found on the same data service
+website already mapped to boundaries. However, I use a preprocessed
+subset of the data already stored in a database. For demonstration
+purposes, it’s stored in a csv file.
+
+Demo
+----
+
+Start by importing the packages and data.
+
+::
+
+   # Import packages
+
+   import numpy as np
+   import pandas as pd
+   import geopandas as gpd
+   import leafmap
+
+   # Import boundaries and census data
+   FILE_PATH_BOUNDARIES = 'statsnzstatistical-area-1-2018-generalised-CSV/statistical-area-1-2018-generalised.csv'
+   FILE_PATH_CENSUS = 'census_data_processed.csv'
+
+   boundaries = gpd.read_file(FILE_PATH_BOUNDARIES)
+   census = read_csv(FILE_PATH_CENSUS)
+
+Next, combine and clean up the datasets. I create the column
+``SA1_CODE`` so I can match the boundaries to the census data then drop
+some columns I’m not interested in or no longer need. I use the default
+functionalities of ``merge()``, namely an inner join, to keep only the
+boundaries for the Statistical Areas I’m interested in.
+
+::
+
+   # Clean up boundaries and combine with census data
+   boundaries['SA1_CODE'] = boundaries.SA12018_V1_00.astype(int)
+
+   boundaries.drop(['WKT', 'SA12018_V1_00', 'LANDWATER', 'LANDWATER_NAME', 'LAND_AREA_SQ_KM', 'AREA_SQ_KM'], axis=1, inplace=True)
+
+   df = boundaries.merge(census, on='SA1_CODE') 
+
+We are now ready to visualise the boundaries and their associated census
+results. I choose fill colours to aid in easy differentiation of
+different statistical areas. I also choose an option to display the
+census data for a particular area in a pop-up when the area is clicked
+on.
+
+::
+
+   map = leafmap.Map()
+   map.add_gdf(df, layer_name="SA1s", info_mode="on_click", fill_colors=['red', 'yellow', 'green', 'orange'])
+   map.zoom_to_bounds(df.total_bounds)
+   map
+
+.. image:: ../_static/images/spatialDemo_output.PNG
+  :width: 600
+
+I highly recommend only displaying a subset of the census data at
+a time to improve performance.

@@ -1,0 +1,260 @@
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+    <title>Spatial Demo &#8212;   documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css" />
+    <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <link rel="author" title="About these documents" href="../../about/" />
+    <link rel="index" title="Index" href="../../genindex/" />
+    <link rel="search" title="Search" href="../../search/" /> 
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+  
+<style type="text/css">
+  ul.ablog-archive {
+    list-style: none;
+    overflow: auto;
+    margin-left: 0px;
+  }
+  ul.ablog-archive li {
+    float: left;
+    margin-right: 5px;
+    font-size: 80%;
+  }
+  ul.postlist a {
+    font-style: italic;
+  }
+  ul.postlist-style-disc {
+    list-style-type: disc;
+  }
+  ul.postlist-style-none {
+    list-style-type: none;
+  }
+  ul.postlist-style-circle {
+    list-style-type: circle;
+  }
+</style>
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+             <section id="spatial-demo">
+<h1>Spatial Demo<a class="headerlink" href="#spatial-demo" title="Permalink to this heading">¶</a></h1>
+<p>Working for a utilties company, we are often interested in where our
+services are located. Tools such as ArcGis and even Power BI allow us to
+visualise these locations. However, sometimes it can be useful to work
+in Jupyter notebooks, especially when that is the tool you are already
+using. Below is a simple demonstration for plotting New Zealand 2018
+census data in a Jupyter notebook.</p>
+<section id="set-up">
+<h2>Set Up<a class="headerlink" href="#set-up" title="Permalink to this heading">¶</a></h2>
+<p>The packages <em>geopandas</em> and <em>leafmap</em> are required for this
+demonstration. I had issues installing <em>geopandas</em> using the standard
+<code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">geopandas</span></code> so manually installed the wheels for <em>gdal</em>,
+<em>fiona</em> and finally <em>geopandas</em> from <a class="reference external" href="https://www.lfd.uci.edu/~gohlke/pythonlibs/#jppype">Christopher Gohlke’s unofficial
+binaries page</a>
+before running <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">Downloads\package_name.wh</span></code> in the
+preceeding order.</p>
+<p>The boundary data used is sourced from the <a class="reference external" href="https://datafinder.stats.govt.nz/">Statistics New Zeaaland
+Geographic Data Service</a>. You’ll
+need to find the ’Statistical Area 1 2018 (generalised) dataset. Select
+the CSV tab then choose the <em>WGS 84 (EPSG:4326 Geographic)</em> projection.
+SA1 (Statistical Area 1) geographies have an ideal size of 100-200
+residents and a maximum population of about 500. At this level of
+granularity, there is much less supressed data than at the finer
+granularity of meshblocks.</p>
+<p>The various census datasets can also found on the same data service
+website already mapped to boundaries. However, I use a preprocessed
+subset of the data already stored in a database. For demonstration
+purposes, it’s stored in a csv file.</p>
+</section>
+<section id="demo">
+<h2>Demo<a class="headerlink" href="#demo" title="Permalink to this heading">¶</a></h2>
+<p>Start by importing the packages and data.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Import packages</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">geopandas</span> <span class="k">as</span> <span class="nn">gpd</span>
+<span class="kn">import</span> <span class="nn">leafmap</span>
+
+<span class="c1"># Import boundaries and census data</span>
+<span class="n">FILE_PATH_BOUNDARIES</span> <span class="o">=</span> <span class="s1">&#39;statsnzstatistical-area-1-2018-generalised-CSV/statistical-area-1-2018-generalised.csv&#39;</span>
+<span class="n">FILE_PATH_CENSUS</span> <span class="o">=</span> <span class="s1">&#39;census_data_processed.csv&#39;</span>
+
+<span class="n">boundaries</span> <span class="o">=</span> <span class="n">gpd</span><span class="o">.</span><span class="n">read_file</span><span class="p">(</span><span class="n">FILE_PATH_BOUNDARIES</span><span class="p">)</span>
+<span class="n">census</span> <span class="o">=</span> <span class="n">read_csv</span><span class="p">(</span><span class="n">FILE_PATH_CENSUS</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Next, combine and clean up the datasets. I create the column
+<code class="docutils literal notranslate"><span class="pre">SA1_CODE</span></code> so I can match the boundaries to the census data then drop
+some columns I’m not interested in or no longer need. I use the default
+functionalities of <code class="docutils literal notranslate"><span class="pre">merge()</span></code>, namely an inner join, to keep only the
+boundaries for the Statistical Areas I’m interested in.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Clean up boundaries and combine with census data</span>
+<span class="n">boundaries</span><span class="p">[</span><span class="s1">&#39;SA1_CODE&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">boundaries</span><span class="o">.</span><span class="n">SA12018_V1_00</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+
+<span class="n">boundaries</span><span class="o">.</span><span class="n">drop</span><span class="p">([</span><span class="s1">&#39;WKT&#39;</span><span class="p">,</span> <span class="s1">&#39;SA12018_V1_00&#39;</span><span class="p">,</span> <span class="s1">&#39;LANDWATER&#39;</span><span class="p">,</span> <span class="s1">&#39;LANDWATER_NAME&#39;</span><span class="p">,</span> <span class="s1">&#39;LAND_AREA_SQ_KM&#39;</span><span class="p">,</span> <span class="s1">&#39;AREA_SQ_KM&#39;</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="n">df</span> <span class="o">=</span> <span class="n">boundaries</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">census</span><span class="p">,</span> <span class="n">on</span><span class="o">=</span><span class="s1">&#39;SA1_CODE&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>We are now ready to visualise the boundaries and their associated census
+results. I choose fill colours to aid in easy differentiation of
+different statistical areas. I also choose an option to display the
+census data for a particular area in a pop-up when the area is clicked
+on.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nb">map</span> <span class="o">=</span> <span class="n">leafmap</span><span class="o">.</span><span class="n">Map</span><span class="p">()</span>
+<span class="nb">map</span><span class="o">.</span><span class="n">add_gdf</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">layer_name</span><span class="o">=</span><span class="s2">&quot;SA1s&quot;</span><span class="p">,</span> <span class="n">info_mode</span><span class="o">=</span><span class="s2">&quot;on_click&quot;</span><span class="p">,</span> <span class="n">fill_colors</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="s1">&#39;yellow&#39;</span><span class="p">,</span> <span class="s1">&#39;green&#39;</span><span class="p">,</span> <span class="s1">&#39;orange&#39;</span><span class="p">])</span>
+<span class="nb">map</span><span class="o">.</span><span class="n">zoom_to_bounds</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">total_bounds</span><span class="p">)</span>
+<span class="nb">map</span>
+</pre></div>
+</div>
+<a class="reference internal image-reference" href="../../_images/spatialDemo_output.PNG"><img alt="../../_images/spatialDemo_output.PNG" src="../../_images/spatialDemo_output.PNG" style="width: 600px;" /></a>
+<p>I highly recommend only displaying a subset of the census data at
+a time to improve performance.</p>
+</section>
+</section>
+
+<div class="section">
+    
+
+<div class="section">
+  <span style="float: left">
+     Previous:
+    
+    <a href="../logreg/">
+       Logistic Regression
+    </a>
+    
+  </span>
+  <span>&nbsp;</span>
+  <span style="float: right">
+    
+  </span>
+</div>
+  
+</div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../"></a></h1>
+
+
+
+
+
+
+
+
+  
+<h2>
+   
+  25 April 2022 
+</h2>
+
+<ul>
+   
+<li id="author">
+  <span
+    >Author:</span
+  >
+   
+  <a href="../../blog/author/keri-sime/">Keri Sime</a>  
+</li>
+     
+</ul>
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../about/">About Keri Sime</a></li>
+</ul>
+
+
+<h3>
+  <a href="../../blog/">Recent Posts</a>
+</h3>
+<ul>
+   
+  <li>
+    <a href="../logreg/"
+      >09 May - Logistic Regression</a
+    >
+  </li>
+  
+  <li>
+    <a href="../svm/"
+      >27 February - Support Vector Machines</a
+    >
+  </li>
+  
+</ul>
+
+<h3>
+  <a href="../../blog/archive/">Archives</a>
+</h3>
+<ul>
+   
+  <li>
+    <a href="../../blog/2022/">2022 (1)</a>
+  </li>
+    
+  <li>
+    <a href="../../blog/2018/">2018 (2)</a>
+  </li>
+   
+</ul>
+
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search/" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2022, Keri Sime.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 5.0.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../../_sources/_posts/spatialDemo.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
