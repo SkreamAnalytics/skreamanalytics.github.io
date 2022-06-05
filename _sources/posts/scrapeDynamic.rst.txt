@@ -1,0 +1,250 @@
+.. post:: December 10, 2021
+   :author: Keri Sime
+
+Scrape a Dynamic Website
+========================
+
+Following on from my previous post where I scraped NZX annoucements from
+a static website, I next looked at scraping dynamic websites. Staying
+with the same theme, I decided to scrape ASX share announcements. Since
+the ASX has a pop-up asking us to accept cookies, we need to use
+Selenium WebDriver to accept the cookie before progressing to scraping.
+Apart from the need to install the Selenium python package, we also need
+to download the webdriver itself, instructions can be found
+`here <https://selenium-python.readthedocs.io/installation.html>`__. I
+use Firefox on a Windows machine so installed geckodriver. I then email
+the results using either smtplib or win32com.client. This is a pretty
+basic use-case for using Selenium but it demonstrates the basic setup.
+
+Scrape
+------
+
+I scrape asx.com.au announcements for specific company codes using a
+combination of *Selenuium* and *Beautiful Soup*. The information is then
+put into a dataframe and *pretty_html_table* is used to return an
+attractive html table. The various packages needed are as follows below.
+
+::
+
+   # Import general packages
+   from yaml import safe_load
+   import re
+   import pandas as pd
+   import time
+   from datetime import datetime as dt
+   from datetime import timedelta
+
+   # Import packages for scraping 
+   import requests
+   import bs4
+   from bs4 import BeautifulSoup
+   from selenium import webdriver
+   from selenium.webdriver.common.keys import Keys
+
+   # Import packages for formatting
+   from pretty_html_table import build_table
+   from IPython.core.display import display, HTML
+
+Since we repeat the same process for several companies, the scraping
+process is wrapped into a function. The naming convention for the
+annoucement pages are standardised allowing us to construct the URL by
+providing just the company code. Similarly to my previous post, I
+include a link to the actual announcement. This involves finding the
+links but also reconstructing the ‘a’ tags. Again, I add back in the
+chevrons after applying the ‘pretty’ formatting to maintain the
+hyperlink in the email. Since I scrape the entire page, I also have to
+limit how many days of annoucements are kept. There were some extra
+quirks in scraping the ASX announcements such as having to change
+‘yesterday’ to yesterday’s date and removing extra text from the
+annoucement title.
+
+::
+
+   def scrape_asx_announcements(code):  
+       """ Define a function which collects announcements from the previous trading 
+           period for a company. 
+           Inputs: 
+               code(str) - the 3 character ASX company code
+           Output: 
+               output_html (html) - html output as either a table or a sentence 
+                                       if no announcement.
+       """
+       
+       # Open browser
+       url = "https://www2.asx.com.au/markets/trade-our-cash-market/announcements." \
+             + code
+       driver.get(url) 
+       time.sleep(5) #ensure that the page is loaded
+       
+       # Accept cookies on first pass
+       try:
+           driver.find_element_by_xpath('//*[@id="onetrust-accept-btn-handler"]'
+                                       ).click() 
+       except:
+           pass
+
+       # Get the html
+       html = driver.page_source
+       soup = BeautifulSoup(html, "html.parser")
+       
+       # Extract the table containing the announcements
+       table = soup.findAll('table') 
+       
+       # Break the table into individual rows (1 row per announcement)
+       rows=[]
+       for elmnt in table[0]:
+           if isinstance(elmnt, bs4.element.Tag):
+               rows.extend(elmnt.find_all('tr'))
+
+       # Extract the information required 
+       data = []  
+       pattern = '.+?(?=  opens new window)'
+       for row in rows:
+           entry = []
+           cols = row.find_all('td')
+           try:
+               # Use regex to extract just the text preceding 'opens new window'
+               title = re.findall(pattern, cols[5].text
+                                 )[0].replace('\n', ' ').replace('\t', '')
+               entry.append(title)
+               link = '<a href="' + cols[5]('a')[0]['href']+ '"> annoucement</a>'
+               entry.append(link)
+               entry.append(cols[0].text.replace('\n', ' ').replace('\t', ''))#time
+               entry.append(cols[7].text.replace('\n', ' ').replace('\t', ''))#type
+               # Append the entry to 'data'
+               data.append([elmnt for elmnt in entry if elmnt])
+           except:
+               pass
+
+       # Convert to a dataframe for filtering    
+       df = pd.DataFrame(data, columns=['Title', 'Link', 'Time', 'Type'])
+       
+       # Replace 'yesterday' with the previous day's date
+       df['Time'] = df['Time'].apply(lambda x: 
+                                     x.replace(' Yesterday',(dt.now()-timedelta(days=1)
+                                     ).strftime(format=' %d %b %Y')))
+       df['Time'] = pd.to_datetime(df['Time'], format=' %d %b %Y %H:%M%p' )
+       
+       # Extract previous trading days annoucements assuming it's run Mon-Fri 
+       if dt.today().weekday() == 0:
+           output = df[df.Time > \
+                       dt.today().replace(hour=0, minute=0, second=0, microsecond=0
+                                         ) - timedelta(days=7) ]
+       else:
+           output = df[df.Time > \
+                       dt.today().replace(hour=0, minute=0, second=0, microsecond=0
+                                         ) - timedelta(days=1) ]
+
+       # Create html
+       if output.empty:
+           output_html = '<h4>No announcements for previous trading period</h4>\n'
+       else:     
+           output_html = build_table(output, 'grey_light') #convert to html
+           #preserve the html link
+           output_html = output_html.replace('&lt;','<')
+           output_html = output_html.replace('&gt;','>')   
+       
+       return output_html
+
+Once the above function is defined. We can load a yaml config file
+holding the details of the company codes.
+
+::
+
+   with open('config.yml', 'r') as f:
+       config = safe_load(f)
+
+.. image:: ../_static/images/scrapeasx/configsnip.PNG
+  :width: 200
+
+We can then cycle through the company codes to construct the email body.
+As well as the formatted tables returned by the above function, I insert
+headings with a link to the company ASX page.
+
+::
+
+   # Initiate the webdriver
+   driver = webdriver.Firefox() 
+
+   # Create the email content
+   body = ""
+   for key, value in config['COMPANIES'].items():
+       heading = '<br><h1>' + value + ': ' + \
+                           '<a href="https://www2.asx.com.au/markets/company/' + \
+                           value + '">' + \
+                           key + '</a></h1>'
+       announcements = scrape_asx_announcements(value)
+       body = body + heading + announcements
+
+   # Close the webdriver
+   driver.close() 
+
+   # Complete the email body
+   start = """<html>
+                   <body>"""
+   end = """       </body>
+               </html>"""
+    
+   msg_content = start + body + end
+
+We can veiw the message content during testing.
+
+::
+
+   display(HTML(msg_content))
+
+.. image:: ../_static/images/scrapeasx/emailcontent.PNG
+  :width: 600
+
+Send
+----
+
+Finally, we are ready to send the email. Below is the code used to send
+the email using Gmail with the email account credentials and list of
+addresses to send to stored in config.yml.
+
+::
+
+   # Import packages
+   import smtplib
+   import ssl
+   from email.mime.text import MIMEText 
+
+   # Email configuration  
+   gmail = config['SENDER']['GMAIL']
+   password = config['SENDER']['PASSWORD']
+   bcc = config['BCC']
+   smtp_server = 'smtp.gmail.com'
+   smtp_port = 587 
+
+   # Create the message
+   message = MIMEText(msg_content, 'html')
+   message['From'] = 'Investment Gang'.format(sender = gmail)
+   message['To'] = gmail
+   message['Subject'] = 'ASX Announcements'
+
+   # Send the email
+   context = ssl.create_default_context()
+   with smtplib.SMTP(smtp_server, smtp_port) as server:
+       server.ehlo()  
+       server.starttls(context=context)
+       server.ehlo()
+       server.login(gmail, password)
+       server.sendmail(gmail, 
+                   message['To'].split(";") + (bcc.split(";") if bcc else []),
+                   message.as_string())
+       server.quit()
+
+Or if using Outlook we have the much simpler process. Noting that we do
+not need to store the password anywhere. 
+
+:: 
+
+    #Import packge import
+    win32com.client
+
+    #Send email outlook = win32com.client.Dispatch(‘outlook.application’)
+    mail = outlook.CreateItem(0) mail.To = config[‘To’] mail.Subject = ‘ASX
+    Announcements’ mail.HTMLBody = msg_content mail.BCC = config[‘BCC’]
+    mail.Send()
+

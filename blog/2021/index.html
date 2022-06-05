@@ -72,6 +72,82 @@
 
   <div class="section ablog-post">
     <h2 class="ablog-post-title">
+      <a href="../../posts/scrapeDynamic/"
+        >Scrape a Dynamic Website</a
+      >
+    </h2>
+
+    <ul class="ablog-archive">
+      <li>
+          10 December 2021 
+      </li>
+       
+<li id="author">
+  <span
+    >Author:</span
+  >
+   
+  <a href="../author/keri-sime/">Keri Sime</a>  
+</li>
+     
+    </ul>
+    <div class="ablog-post-excerpt docutils container">
+<p>Following on from my previous post where I scraped NZX annoucements from
+a static website, I next looked at scraping dynamic websites. Staying
+with the same theme, I decided to scrape ASX share announcements. Since
+the ASX has a pop-up asking us to accept cookies, we need to use
+Selenium WebDriver to accept the cookie before progressing to scraping.
+Apart from the need to install the Selenium python package, we also need
+to download the webdriver itself, instructions can be found
+<a class="reference external" href="https://selenium-python.readthedocs.io/installation.html">here</a>. I
+use Firefox on a Windows machine so installed geckodriver. I then email
+the results using either smtplib or win32com.client. This is a pretty
+basic use-case for using Selenium but it demonstrates the basic setup.</p>
+</div>
+
+    <p class="ablog-post-expand"><a href="../../posts/scrapeDynamic/"><em>Read more ...</em></a></p>
+    <hr />
+  </div>
+  
+
+  <div class="section ablog-post">
+    <h2 class="ablog-post-title">
+      <a href="../../posts/scrapeSend/"
+        >Scrape and Send</a
+      >
+    </h2>
+
+    <ul class="ablog-archive">
+      <li>
+          02 October 2021 
+      </li>
+       
+<li id="author">
+  <span
+    >Author:</span
+  >
+   
+  <a href="../author/keri-sime/">Keri Sime</a>  
+</li>
+     
+    </ul>
+    <div class="ablog-post-excerpt docutils container">
+<p>As part of a share syndicate, I thought it would be useful for memebers
+to receive share market announcements to their inboxes on a daily basis.
+It turns out that this was a fairly simple process using the package
+Beautiful Soup. I tested both smtplib and win32com.client packges to
+send the actual email. The win32com.client uses Microsoft Outlook to
+send the email and has the advantage of not requiring a password to be
+stored anywhere.</p>
+</div>
+
+    <p class="ablog-post-expand"><a href="../../posts/scrapeSend/"><em>Read more ...</em></a></p>
+    <hr />
+  </div>
+  
+
+  <div class="section ablog-post">
+    <h2 class="ablog-post-title">
       <a href="../../posts/shipSchedule/"
         >Scheduling Ships</a
       >
@@ -171,6 +247,18 @@ ongoing performance.</p>
   </li>
   
   <li>
+    <a href="../../posts/scrapeDynamic/"
+      >10 December - Scrape a Dynamic Website</a
+    >
+  </li>
+  
+  <li>
+    <a href="../../posts/scrapeSend/"
+      >02 October - Scrape and Send</a
+    >
+  </li>
+  
+  <li>
     <a href="../../posts/shipSchedule/"
       >15 June - Scheduling Ships</a
     >
@@ -179,18 +267,6 @@ ongoing performance.</p>
   <li>
     <a href="../../posts/projMgmnt/"
       >15 April - Managing a Machine Learning Project</a
-    >
-  </li>
-  
-  <li>
-    <a href="../../posts/mlbox/"
-      >30 October - MLBox</a
-    >
-  </li>
-  
-  <li>
-    <a href="../../posts/chisquare/"
-      >27 April - Chi-square Testing in Oracle SQL</a
     >
   </li>
   

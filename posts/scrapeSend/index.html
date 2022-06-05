@@ -1,0 +1,376 @@
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+    <title>Scrape and Send &#8212;   documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css" />
+    <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <link rel="author" title="About these documents" href="../../about/" />
+    <link rel="index" title="Index" href="../../genindex/" />
+    <link rel="search" title="Search" href="../../search/" /> 
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+  
+<style type="text/css">
+  ul.ablog-archive {
+    list-style: none;
+    overflow: auto;
+    margin-left: 0px;
+  }
+  ul.ablog-archive li {
+    float: left;
+    margin-right: 5px;
+    font-size: 80%;
+  }
+  ul.postlist a {
+    font-style: italic;
+  }
+  ul.postlist-style-disc {
+    list-style-type: disc;
+  }
+  ul.postlist-style-none {
+    list-style-type: none;
+  }
+  ul.postlist-style-circle {
+    list-style-type: circle;
+  }
+</style>
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+             <section id="scrape-and-send">
+<h1>Scrape and Send<a class="headerlink" href="#scrape-and-send" title="Permalink to this heading">¶</a></h1>
+<p>As part of a share syndicate, I thought it would be useful for memebers
+to receive share market announcements to their inboxes on a daily basis.
+It turns out that this was a fairly simple process using the package
+Beautiful Soup. I tested both smtplib and win32com.client packges to
+send the actual email. The win32com.client uses Microsoft Outlook to
+send the email and has the advantage of not requiring a password to be
+stored anywhere.</p>
+<section id="scrape">
+<h2>Scrape<a class="headerlink" href="#scrape" title="Permalink to this heading">¶</a></h2>
+<p>I scrape nzx.com announcements for specific company codes using
+Beautiful Soup before putting the information into a dataframe and using
+pretty_html_table to return an attractive html table. The various
+packages needed are as follows below.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Import packages for scraping</span>
+<span class="kn">import</span> <span class="nn">requests</span>
+<span class="kn">from</span> <span class="nn">yaml</span> <span class="kn">import</span> <span class="n">safe_load</span>
+<span class="kn">from</span> <span class="nn">bs4</span> <span class="kn">import</span> <span class="n">BeautifulSoup</span> <span class="k">as</span> <span class="n">bs</span>
+
+<span class="c1"># Import packages for formatting</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">from</span> <span class="nn">datetime</span> <span class="kn">import</span> <span class="n">datetime</span> <span class="k">as</span> <span class="n">dt</span>
+<span class="kn">from</span> <span class="nn">datetime</span> <span class="kn">import</span> <span class="n">timedelta</span>
+<span class="kn">from</span> <span class="nn">pretty_html_table</span> <span class="kn">import</span> <span class="n">build_table</span>
+<span class="kn">from</span> <span class="nn">IPython.core.display</span> <span class="kn">import</span> <span class="n">display</span><span class="p">,</span> <span class="n">HTML</span>
+</pre></div>
+</div>
+<p>Since we repeat the same process for several companies, the scraping
+process is wrapped into a function. The naming convention for the
+annoucement pages are standardised so we can construct the URL by
+providing just the company code. It’s a simple process but there are a
+couple of hooks. Firstly, I wanted to include a link to the actual
+announcement not just the summary information. I could use
+element.text.strip() to extract the text content from each cell.
+However, links are stored inside ‘a’ tags so I also had to extract
+‘href’ after identifying the ‘a’ tag then reconstruct the link. Finally,
+I had to add back in the chevrons after applying the ‘pretty’ formatting
+to maintain the hyperlink in the output. Secondly, since we scrape the
+entire page, we have to then limit the annoucements dates to the latest
+business day relative to the day the code is run.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">scrape_nzx_announcements</span><span class="p">(</span><span class="n">code</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Collect the previous business day&#39;s announcements for the company code.</span>
+<span class="sd">        Inputs:</span>
+<span class="sd">            code(str) - the 3 character NZX company code</span>
+<span class="sd">        Output:</span>
+<span class="sd">            output_html (html) - html output to print in the email</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># Get page content using beautiful soup</span>
+    <span class="n">downloadpage</span> <span class="o">=</span> <span class="s2">&quot;https://www.nzx.com/companies/&quot;</span> <span class="o">+</span> <span class="n">code</span> <span class="o">+</span> <span class="s2">&quot;/announcements&quot;</span>
+    <span class="n">page</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">downloadpage</span><span class="p">)</span>
+    <span class="n">soup</span> <span class="o">=</span> <span class="n">bs</span><span class="p">(</span><span class="n">page</span><span class="o">.</span><span class="n">content</span><span class="p">,</span> <span class="s1">&#39;html.parser&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Get annoucement table</span>
+    <span class="n">table</span> <span class="o">=</span> <span class="n">soup</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;table&#39;</span><span class="p">,</span> <span class="n">attrs</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;class&#39;</span><span class="p">:</span><span class="s1">&#39;table-to-list announcements-table&#39;</span><span class="p">})</span>
+    <span class="n">table_body</span> <span class="o">=</span> <span class="n">table</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;tbody&#39;</span><span class="p">)</span>
+    <span class="n">rows</span> <span class="o">=</span> <span class="n">table_body</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;tr&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Extract the table contentfor each row</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">rows</span><span class="p">:</span>
+        <span class="n">cols</span> <span class="o">=</span> <span class="n">row</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;td&#39;</span><span class="p">)</span>
+        <span class="n">entry</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">elmnt</span> <span class="ow">in</span> <span class="n">cols</span><span class="p">:</span>
+            <span class="n">entry</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">elmnt</span><span class="o">.</span><span class="n">text</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span> <span class="c1">#get the text</span>
+            <span class="k">try</span><span class="p">:</span> <span class="c1">#get the link</span>
+                <span class="n">link</span> <span class="o">=</span> <span class="s1">&#39;&lt;a href=&quot;https://www.nzx.com/&#39;</span> <span class="o">+</span> \
+                        <span class="n">elmnt</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="s1">&#39;a&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;href&#39;</span><span class="p">]</span> <span class="o">+</span> \
+                        <span class="s1">&#39;&quot;&gt;&#39;</span> <span class="o">+</span> \
+                        <span class="n">elmnt</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="s1">&#39;a&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;href&#39;</span><span class="p">]</span> <span class="o">+</span> \
+                        <span class="s1">&#39;&lt;/a&gt;&#39;</span>
+                <span class="n">entry</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">link</span><span class="p">)</span>
+            <span class="k">except</span><span class="p">:</span>
+                <span class="k">continue</span>
+        <span class="n">data</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">elmnt</span> <span class="k">for</span> <span class="n">elmnt</span> <span class="ow">in</span> <span class="n">entry</span> <span class="k">if</span> <span class="n">elmnt</span><span class="p">])</span>
+
+    <span class="c1"># Put data into a dataframe and extract recent announcements assuming it&#39;s run Mon-Fri</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">columns</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;Title&#39;</span><span class="p">,</span> <span class="s1">&#39;Link&#39;</span><span class="p">,</span> <span class="s1">&#39;Time&#39;</span><span class="p">,</span> <span class="s1">&#39;Type&#39;</span><span class="p">,</span> <span class="s1">&#39;Flag&#39;</span><span class="p">])</span>
+    <span class="n">df</span><span class="p">[</span><span class="s1">&#39;Time&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;Time&#39;</span><span class="p">],</span> <span class="nb">format</span><span class="o">=</span><span class="s1">&#39;</span><span class="si">%d</span><span class="s1">/%m/%Y, %H:%S %p&#39;</span> <span class="p">)</span>
+    <span class="k">if</span> <span class="n">dt</span><span class="o">.</span><span class="n">today</span><span class="p">()</span><span class="o">.</span><span class="n">weekday</span><span class="p">()</span> <span class="o">=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">output</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="o">.</span><span class="n">Time</span> <span class="o">&gt;</span> \
+                    <span class="n">dt</span><span class="o">.</span><span class="n">today</span><span class="p">()</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">hour</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">minute</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">second</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">microsecond</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="o">-</span> \
+                    <span class="n">timedelta</span><span class="p">(</span><span class="n">days</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span> <span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">output</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="o">.</span><span class="n">Time</span> <span class="o">&gt;</span> \
+                    <span class="n">dt</span><span class="o">.</span><span class="n">today</span><span class="p">()</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">hour</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">minute</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">second</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">microsecond</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="o">-</span> \
+                    <span class="n">timedelta</span><span class="p">(</span><span class="n">days</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="p">]</span>
+
+    <span class="c1"># Create html</span>
+    <span class="k">if</span> <span class="n">output</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+        <span class="n">output_html</span> <span class="o">=</span> <span class="s1">&#39;&lt;h4&gt;No announcements yesterday&lt;/h4&gt;</span><span class="se">\n</span><span class="s1">&#39;</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">output_html</span> <span class="o">=</span> <span class="n">build_table</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="s1">&#39;grey_light&#39;</span><span class="p">)</span> <span class="c1">#convert df to html</span>
+        <span class="c1">#preserve the html link by adding back in chevrons</span>
+        <span class="n">output_html</span> <span class="o">=</span> <span class="n">output_html</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;&amp;lt;&#39;</span><span class="p">,</span><span class="s1">&#39;&lt;&#39;</span><span class="p">)</span>
+        <span class="n">output_html</span> <span class="o">=</span> <span class="n">output_html</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;&amp;gt;&#39;</span><span class="p">,</span><span class="s1">&#39;&gt;&#39;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">output_html</span>
+</pre></div>
+</div>
+<p>Once the above function is defined. We can load a yaml config file
+holding the details of the company codes as well as email information.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s1">&#39;config.yml&#39;</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+    <span class="n">config</span> <span class="o">=</span> <span class="n">safe_load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The structure of the config file for the companies:</p>
+<a class="reference internal image-reference" href="_static/images/scrapenzx/configpic.PNG"><img alt="_static/images/scrapenzx/configpic.PNG" src="_static/images/scrapenzx/configpic.PNG" style="width: 600px;" /></a>
+<p>We can then cycle through the company codes to construct the email. As
+well as the formatted tables returned by the above function, I insert
+headings with a link to the company NZX page.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Create the email content</span>
+
+<span class="n">body</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+
+<span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;COMPANIES&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+    <span class="n">heading</span> <span class="o">=</span> <span class="s1">&#39;&lt;br&gt;&lt;h1&gt;&#39;</span> <span class="o">+</span> <span class="n">value</span> <span class="o">+</span> <span class="s1">&#39;: &#39;</span> <span class="o">+</span> \
+                        <span class="s1">&#39;&lt;a href=&quot;https://www.nzx.com/instruments/&#39;</span> <span class="o">+</span> \
+                        <span class="n">value</span> <span class="o">+</span> <span class="s1">&#39;&quot;&gt;&#39;</span> <span class="o">+</span> \
+                        <span class="n">key</span> <span class="o">+</span> <span class="s1">&#39;&lt;/a&gt;&lt;/h1&gt;&#39;</span>
+    <span class="n">announcements</span> <span class="o">=</span> <span class="n">scrape_nzx_announcements</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+    <span class="n">body</span> <span class="o">=</span> <span class="n">body</span> <span class="o">+</span> <span class="n">heading</span> <span class="o">+</span> <span class="n">announcements</span>
+
+<span class="n">start</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;&lt;html&gt;</span>
+<span class="s2">                &lt;body&gt;&quot;&quot;&quot;</span>
+<span class="n">end</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;       &lt;/body&gt;</span>
+<span class="s2">            &lt;/html&gt;&quot;&quot;&quot;</span>
+
+<span class="n">msg_content</span> <span class="o">=</span> <span class="n">start</span> <span class="o">+</span> <span class="n">body</span> <span class="o">+</span> <span class="n">end</span>
+</pre></div>
+</div>
+<p>We can veiw the message content during testing.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">display</span><span class="p">(</span><span class="n">HTML</span><span class="p">(</span><span class="n">msg_content</span><span class="p">))</span>
+</pre></div>
+</div>
+<a class="reference internal image-reference" href="_static/images/scrapenzx/emailcontent.PNG"><img alt="_static/images/scrapenzx/emailcontent.PNG" src="_static/images/scrapenzx/emailcontent.PNG" style="width: 600px;" /></a>
+</section>
+<section id="send">
+<h2>Send<a class="headerlink" href="#send" title="Permalink to this heading">¶</a></h2>
+<p>Finally, we are ready to send the email. Below is the code used to send
+the email using Gmail with the email account credentials and list of
+addresses to send to stored in config.yml.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Import packages</span>
+<span class="kn">import</span> <span class="nn">smtplib</span>
+<span class="kn">import</span> <span class="nn">ssl</span>
+<span class="kn">from</span> <span class="nn">email.mime.text</span> <span class="kn">import</span> <span class="n">MIMEText</span>
+
+<span class="c1"># Email configuration</span>
+<span class="n">gmail</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;SENDER&#39;</span><span class="p">][</span><span class="s1">&#39;GMAIL&#39;</span><span class="p">]</span>
+<span class="n">password</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;SENDER&#39;</span><span class="p">][</span><span class="s1">&#39;PASSWORD&#39;</span><span class="p">]</span>
+<span class="n">bcc</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;BCC&#39;</span><span class="p">]</span>
+<span class="n">smtp_server</span> <span class="o">=</span> <span class="s1">&#39;smtp.gmail.com&#39;</span>
+<span class="n">smtp_port</span> <span class="o">=</span> <span class="mi">587</span>
+
+<span class="c1"># Create the message</span>
+<span class="n">message</span> <span class="o">=</span> <span class="n">MIMEText</span><span class="p">(</span><span class="n">msg_content</span><span class="p">,</span> <span class="s1">&#39;html&#39;</span><span class="p">)</span>
+<span class="n">message</span><span class="p">[</span><span class="s1">&#39;From&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;Investment Gang&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">sender</span> <span class="o">=</span> <span class="n">gmail</span><span class="p">)</span>
+<span class="n">message</span><span class="p">[</span><span class="s1">&#39;To&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">gmail</span>
+<span class="n">message</span><span class="p">[</span><span class="s1">&#39;Subject&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;NZX Announcements&#39;</span>
+
+<span class="c1"># Send the email</span>
+<span class="n">context</span> <span class="o">=</span> <span class="n">ssl</span><span class="o">.</span><span class="n">create_default_context</span><span class="p">()</span>
+<span class="k">with</span> <span class="n">smtplib</span><span class="o">.</span><span class="n">SMTP</span><span class="p">(</span><span class="n">smtp_server</span><span class="p">,</span> <span class="n">smtp_port</span><span class="p">)</span> <span class="k">as</span> <span class="n">server</span><span class="p">:</span>
+    <span class="n">server</span><span class="o">.</span><span class="n">ehlo</span><span class="p">()</span>
+    <span class="n">server</span><span class="o">.</span><span class="n">starttls</span><span class="p">(</span><span class="n">context</span><span class="o">=</span><span class="n">context</span><span class="p">)</span>
+    <span class="n">server</span><span class="o">.</span><span class="n">ehlo</span><span class="p">()</span>
+    <span class="n">server</span><span class="o">.</span><span class="n">login</span><span class="p">(</span><span class="n">gmail</span><span class="p">,</span> <span class="n">password</span><span class="p">)</span>
+    <span class="n">server</span><span class="o">.</span><span class="n">sendmail</span><span class="p">(</span><span class="n">gmail</span><span class="p">,</span>
+                <span class="n">message</span><span class="p">[</span><span class="s1">&#39;To&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;;&quot;</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="n">bcc</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;;&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="n">bcc</span> <span class="k">else</span> <span class="p">[]),</span>
+                <span class="n">message</span><span class="o">.</span><span class="n">as_string</span><span class="p">())</span>
+    <span class="n">server</span><span class="o">.</span><span class="n">quit</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Or if using Outlook we have the much simpler process. Noting that we do
+not need to store the password anywhere.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1">#Import packge</span>
+<span class="kn">import</span> <span class="nn">win32com.client</span>
+
+<span class="c1">#Send email</span>
+<span class="n">outlook</span> <span class="o">=</span> <span class="n">win32com</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">Dispatch</span><span class="p">(</span><span class="s1">&#39;outlook.application&#39;</span><span class="p">)</span>
+<span class="n">mail</span> <span class="o">=</span> <span class="n">outlook</span><span class="o">.</span><span class="n">CreateItem</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+<span class="n">mail</span><span class="o">.</span><span class="n">To</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;To&#39;</span><span class="p">]</span>
+<span class="n">mail</span><span class="o">.</span><span class="n">Subject</span> <span class="o">=</span> <span class="s1">&#39;NZX Announcements&#39;</span>
+<span class="n">mail</span><span class="o">.</span><span class="n">HTMLBody</span> <span class="o">=</span> <span class="n">msg_content</span>
+<span class="n">mail</span><span class="o">.</span><span class="n">BCC</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;BCC&#39;</span><span class="p">]</span>
+<span class="n">mail</span><span class="o">.</span><span class="n">Send</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
+</section>
+
+<div class="section">
+    
+
+<div class="section">
+  <span style="float: left">
+     Previous:
+    
+    <a href="../shipSchedule/">
+       Scheduling Ships
+    </a>
+    
+  </span>
+  <span>&nbsp;</span>
+  <span style="float: right">
+     Next: 
+    <a href="../scrapeDynamic/">
+      Scrape a Dynamic Website 
+    </a>
+    
+  </span>
+</div>
+  
+</div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../"></a></h1>
+
+
+
+
+
+
+
+
+  
+<h2>
+   
+  02 October 2021 
+</h2>
+
+<ul>
+   
+<li id="author">
+  <span
+    >Author:</span
+  >
+   
+  <a href="../../blog/author/keri-sime/">Keri Sime</a>  
+</li>
+     
+</ul>
+
+<h3>
+  <a href="../../blog/">Recent Posts</a>
+</h3>
+<ul>
+   
+  <li>
+    <a href="../spatialDemo/"
+      >25 April - Spatial Demo</a
+    >
+  </li>
+  
+  <li>
+    <a href="../scrapeDynamic/"
+      >10 December - Scrape a Dynamic Website</a
+    >
+  </li>
+  
+  <li>
+    <a href="../shipSchedule/"
+      >15 June - Scheduling Ships</a
+    >
+  </li>
+  
+  <li>
+    <a href="../projMgmnt/"
+      >15 April - Managing a Machine Learning Project</a
+    >
+  </li>
+  
+  <li>
+    <a href="../mlbox/"
+      >30 October - MLBox</a
+    >
+  </li>
+  
+</ul>
+
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search/" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2022, Keri Sime.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 5.0.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../../_sources/posts/scrapeSend.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

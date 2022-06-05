@@ -1,0 +1,213 @@
+.. post:: October 2, 2021
+   :author: Keri Sime
+
+Scrape and Send
+===============
+
+As part of a share syndicate, I thought it would be useful for memebers
+to receive share market announcements to their inboxes on a daily basis.
+It turns out that this was a fairly simple process using the package
+Beautiful Soup. I tested both smtplib and win32com.client packges to
+send the actual email. The win32com.client uses Microsoft Outlook to
+send the email and has the advantage of not requiring a password to be
+stored anywhere.
+
+Scrape
+------
+
+I scrape nzx.com announcements for specific company codes using
+Beautiful Soup before putting the information into a dataframe and using
+pretty_html_table to return an attractive html table. The various
+packages needed are as follows below.
+
+::
+
+   # Import packages for scraping 
+   import requests
+   from yaml import safe_load
+   from bs4 import BeautifulSoup as bs
+
+   # Import packages for formatting
+   import pandas as pd
+   from datetime import datetime as dt
+   from datetime import timedelta
+   from pretty_html_table import build_table
+   from IPython.core.display import display, HTML
+
+Since we repeat the same process for several companies, the scraping
+process is wrapped into a function. The naming convention for the
+annoucement pages are standardised so we can construct the URL by
+providing just the company code. It’s a simple process but there are a
+couple of hooks. Firstly, I wanted to include a link to the actual
+announcement not just the summary information. I could use
+element.text.strip() to extract the text content from each cell.
+However, links are stored inside ‘a’ tags so I also had to extract
+‘href’ after identifying the ‘a’ tag then reconstruct the link. Finally,
+I had to add back in the chevrons after applying the ‘pretty’ formatting
+to maintain the hyperlink in the output. Secondly, since we scrape the
+entire page, we have to then limit the annoucements dates to the latest
+business day relative to the day the code is run.
+
+::
+
+   def scrape_nzx_announcements(code):  
+       """ Collect the previous business day's announcements for the company code. 
+           Inputs: 
+               code(str) - the 3 character NZX company code
+           Output: 
+               output_html (html) - html output to print in the email
+       """    
+      
+       # Get page content using beautiful soup
+       downloadpage = "https://www.nzx.com/companies/" + code + "/announcements"
+       page = requests.get(downloadpage)
+       soup = bs(page.content, 'html.parser')
+       
+       # Get annoucement table
+       table = soup.find('table', attrs={'class':'table-to-list announcements-table'})
+       table_body = table.find('tbody')
+       rows = table_body.find_all('tr')
+       
+       # Extract the table contentfor each row
+       data = []  
+       for row in rows:
+           cols = row.find_all('td')
+           entry = []
+           for elmnt in cols:
+               entry.append(elmnt.text.strip()) #get the text
+               try: #get the link
+                   link = '<a href="https://www.nzx.com/' + \
+                           elmnt.select('a')[0]['href'] + \
+                           '">' + \
+                           elmnt.select('a')[0]['href'] + \
+                           '</a>'
+                   entry.append(link)
+               except:
+                   continue
+           data.append([elmnt for elmnt in entry if elmnt])
+       
+       # Put data into a dataframe and extract recent announcements assuming it's run Mon-Fri
+       df = pd.DataFrame(data, columns = ['Title', 'Link', 'Time', 'Type', 'Flag'])
+       df['Time'] = pd.to_datetime(df['Time'], format='%d/%m/%Y, %H:%S %p' )
+       if dt.today().weekday() = 0:
+           output = df[df.Time > \
+                       dt.today().replace(hour=0, minute=0, second=0, microsecond=0) - \
+                       timedelta(days=3) ]
+       else:
+           output = df[df.Time > \
+                       dt.today().replace(hour=0, minute=0, second=0, microsecond=0) - \
+                       timedelta(days=1) ]
+              
+       # Create html
+       if output.empty:
+           output_html = '<h4>No announcements yesterday</h4>\n'
+       else:     
+           output_html = build_table(output, 'grey_light') #convert df to html
+           #preserve the html link by adding back in chevrons
+           output_html = output_html.replace('&lt;','<')
+           output_html = output_html.replace('&gt;','>')
+       
+       return output_html
+
+Once the above function is defined. We can load a yaml config file
+holding the details of the company codes as well as email information.
+
+::
+
+   with open('config.yml', 'r') as f:
+       config = safe_load(f)
+
+The structure of the config file for the companies: 
+
+.. image:: ../_static/images/scrapenzx/configpic.PNG
+  :width: 600
+
+We can then cycle through the company codes to construct the email. As
+well as the formatted tables returned by the above function, I insert
+headings with a link to the company NZX page.
+
+::
+
+   # Create the email content
+
+   body = ""
+
+   for key, value in config['COMPANIES'].items():
+       heading = '<br><h1>' + value + ': ' + \
+                           '<a href="https://www.nzx.com/instruments/' + \
+                           value + '">' + \
+                           key + '</a></h1>'
+       announcements = scrape_nzx_announcements(value)
+       body = body + heading + announcements
+
+   start = """<html>
+                   <body>"""
+   end = """       </body>
+               </html>"""
+    
+   msg_content = start + body + end
+
+We can veiw the message content during testing.
+
+::
+
+   display(HTML(msg_content))
+
+.. image:: ../_static/images/scrapenzx/emailcontent.PNG
+  :width: 600
+
+Send
+----
+
+Finally, we are ready to send the email. Below is the code used to send
+the email using Gmail with the email account credentials and list of
+addresses to send to stored in config.yml.
+
+::
+
+   # Import packages
+   import smtplib
+   import ssl
+   from email.mime.text import MIMEText 
+
+   # Email configuration  
+   gmail = config['SENDER']['GMAIL']
+   password = config['SENDER']['PASSWORD']
+   bcc = config['BCC']
+   smtp_server = 'smtp.gmail.com'
+   smtp_port = 587 
+
+   # Create the message
+   message = MIMEText(msg_content, 'html')
+   message['From'] = 'Investment Gang'.format(sender = gmail)
+   message['To'] = gmail
+   message['Subject'] = 'NZX Announcements'
+
+   # Send the email
+   context = ssl.create_default_context()
+   with smtplib.SMTP(smtp_server, smtp_port) as server:
+       server.ehlo()  
+       server.starttls(context=context)
+       server.ehlo()
+       server.login(gmail, password)
+       server.sendmail(gmail, 
+                   message['To'].split(";") + (bcc.split(";") if bcc else []),
+                   message.as_string())
+       server.quit()
+
+Or if using Outlook we have the much simpler process. Noting that we do
+not need to store the password anywhere.
+
+::
+
+   #Import packge
+   import win32com.client
+
+   #Send email
+   outlook = win32com.client.Dispatch('outlook.application')
+   mail = outlook.CreateItem(0)
+   mail.To = config['To']
+   mail.Subject = 'NZX Announcements'
+   mail.HTMLBody = msg_content
+   mail.BCC = config['BCC'] 
+   mail.Send()
