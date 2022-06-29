@@ -4,9 +4,6 @@
 Random Forests
 ===============
 
-Theory
-------
-
 *Ensemble methods* have been developed to improve the performance of
 individual machine learning algorithms. These methods build multiple
 models, such as decision trees, and combine the decisions of the

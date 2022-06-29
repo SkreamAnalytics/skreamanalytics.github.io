@@ -192,9 +192,8 @@ interested in maximizing the recall.
 If we want to automatically tune the in-built
 MulticlassClassificationEvaluator has metric choices including
 ‘accuracy’ and ‘f1’, but not the kappa coefficient. To overcome this
-problem I adapted the CrossValidator function to allow custom metrics
-similar to what has been done here
-(https://stackoverflow.com/questions/44249089/custom-evaluator-during-cross-validation-spark).
+problem I adapted the CrossValidator function to allow custom metrics 
+similar to what has been done `here <https://stackoverflow.com/questions/44249089/custom-evaluator-during-cross-validation-spark>`__.
 It was also necessary to adjust the *metrics* function to output the
 kappa coefficient rather than printing the various statistics.
 

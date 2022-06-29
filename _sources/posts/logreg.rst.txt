@@ -6,13 +6,8 @@ Logistic Regression
 
 Don’t be fooled by the name, logistic regression is actually a
 *classification* model and one of the most commonly used at that.
-However, the name still makes sense as the mathematics of this model are
-based on linear regression.
-
-Theory
-------
-
-Here, I’ll present binomial logistic regression in detail which can then
+The name comes from the fact that mathematics of this model is
+based on linear regression. Here, I’ll present binomial logistic regression in detail which can then
 be extended to a multinomial model.
 
 Binomial Logistic Regression

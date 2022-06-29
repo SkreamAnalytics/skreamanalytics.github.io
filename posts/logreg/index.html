@@ -62,14 +62,11 @@
 <h1>Logistic Regression<a class="headerlink" href="#logistic-regression" title="Permalink to this heading">¶</a></h1>
 <p>Don’t be fooled by the name, logistic regression is actually a
 <em>classification</em> model and one of the most commonly used at that.
-However, the name still makes sense as the mathematics of this model are
-based on linear regression.</p>
-<section id="theory">
-<h2>Theory<a class="headerlink" href="#theory" title="Permalink to this heading">¶</a></h2>
-<p>Here, I’ll present binomial logistic regression in detail which can then
+The name comes from the fact that mathematics of this model is
+based on linear regression. Here, I’ll present binomial logistic regression in detail which can then
 be extended to a multinomial model.</p>
 <section id="binomial-logistic-regression">
-<h3>Binomial Logistic Regression<a class="headerlink" href="#binomial-logistic-regression" title="Permalink to this heading">¶</a></h3>
+<h2>Binomial Logistic Regression<a class="headerlink" href="#binomial-logistic-regression" title="Permalink to this heading">¶</a></h2>
 <p>Say we have a binary variable, Y, with values 0 or 1. Instead of
 predicting the dependent variable directly, we predict the probability
 that the dependent variable, Y, is 1 given a vector of independant
@@ -101,7 +98,7 @@ and <span class="math notranslate nohighlight">\(Y=0\)</span> otherwise. Therefo
 separating the two classes is <span class="math notranslate nohighlight">\(\beta_0 + x.\beta = 0\)</span>.</p>
 </section>
 <section id="multinomial-logistic-regression">
-<h3>Multinomial Logistic Regression<a class="headerlink" href="#multinomial-logistic-regression" title="Permalink to this heading">¶</a></h3>
+<h2>Multinomial Logistic Regression<a class="headerlink" href="#multinomial-logistic-regression" title="Permalink to this heading">¶</a></h2>
 <p>The multinomial model with k classes has k-1 sets of parameters. This is
 coherent with the binomial model which has one set of parameters to
 distinguish between the two classes. A simple way to implement a
@@ -111,7 +108,7 @@ classes grouped together. However, this is not the only method to
 formulate a multinomial logistic regression.</p>
 </section>
 <section id="numerical-optimisation">
-<h3>Numerical Optimisation<a class="headerlink" href="#numerical-optimisation" title="Permalink to this heading">¶</a></h3>
+<h2>Numerical Optimisation<a class="headerlink" href="#numerical-optimisation" title="Permalink to this heading">¶</a></h2>
 <p>The maximum likelihood function is used to calculate the parameters of
 the logistic model:</p>
 <div class="math notranslate nohighlight">
@@ -139,7 +136,7 @@ methods available. A common method, also used in R’s glm() function, is
 <em>iteratively reweighted least squares</em>.</p>
 </section>
 <section id="iteratively-reweighted-least-squares">
-<h3>Iteratively reweighted least squares<a class="headerlink" href="#iteratively-reweighted-least-squares" title="Permalink to this heading">¶</a></h3>
+<h2>Iteratively reweighted least squares<a class="headerlink" href="#iteratively-reweighted-least-squares" title="Permalink to this heading">¶</a></h2>
 <p>Each step involves solving a weighted least squares problem using
 Newton’s or the Newton Raphson method. Newton’s algorithm, for an
 initial estimate <span class="math notranslate nohighlight">\(x_0\)</span>, performs the following update:</p>
@@ -185,15 +182,13 @@ and W a diagonal matrix with entries <span class="math notranslate nohighlight">
 solution which is calculated in a single step since <span class="math notranslate nohighlight">\(\beta^{n+1}\)</span> is independant of :math:beta^{n}.</p>
 </section>
 <section id="pros-and-cons">
-<h3>Pros and Cons<a class="headerlink" href="#pros-and-cons" title="Permalink to this heading">¶</a></h3>
+<h2>Pros and Cons<a class="headerlink" href="#pros-and-cons" title="Permalink to this heading">¶</a></h2>
 <p>Part of the reason for the popularity of logistic regression is that it
 is a traditional and therefore better-known method. Other advantages are
 that it allows the calculation of log-odds and the ability to validate
 the model using p-values and anova.</p>
-</section>
-</section>
 <section id="code">
-<h2>Code<a class="headerlink" href="#code" title="Permalink to this heading">¶</a></h2>
+<h3>Code<a class="headerlink" href="#code" title="Permalink to this heading">¶</a></h3>
 <p>This is fairly basic example using the well-known Titanic data set.
 You’ll need the package “Titanic” which supplies the data in an easy to
 use format. I’ve simply deleted the rows containing null values, but I
@@ -286,8 +281,10 @@ auc
 </div>
 <p>Resulting ROC curve:</p>
 <a class="reference internal image-reference" href="../../_images/Rplot.png"><img alt="../../_images/Rplot.png" src="../../_images/Rplot.png" style="width: 600px;" /></a>
+</section>
+</section>
 <section id="references">
-<h3>References<a class="headerlink" href="#references" title="Permalink to this heading">¶</a></h3>
+<h2>References<a class="headerlink" href="#references" title="Permalink to this heading">¶</a></h2>
 <p><a class="reference external" href="http://www.stat.cmu.edu/%7Ecshalizi/uADA/12/lectures/ch12.pdf">http://www.stat.cmu.edu/%7Ecshalizi/uADA/12/lectures/ch12.pdf</a></p>
 <p>Numerical optimisation:</p>
 <p><a class="reference external" href="http://cs229.stanford.edu/notes/cs229-notes1.pdf#page=20">http://cs229.stanford.edu/notes/cs229-notes1.pdf#page=20</a></p>
@@ -296,11 +293,9 @@ auc
 <p><a class="reference external" href="https://ccrma.stanford.edu/workshops/mir2009/references/ROCintro.pdf">https://ccrma.stanford.edu/workshops/mir2009/references/ROCintro.pdf</a></p>
 </section>
 </section>
-</section>
 
 <div class="section">
-    
-
+     
 <div class="section">
   <span style="float: left">
      Previous:
@@ -366,6 +361,12 @@ auc
 <ul>
    
   <li>
+    <a href="../buildAblogSite/"
+      >06 June - Using Python to Build a Github Hosted Blog</a
+    >
+  </li>
+  
+  <li>
     <a href="../spatialDemo/"
       >25 April - Spatial Demo</a
     >
@@ -389,12 +390,6 @@ auc
     >
   </li>
   
-  <li>
-    <a href="../projMgmnt/"
-      >15 April - Managing a Machine Learning Project</a
-    >
-  </li>
-  
 </ul>
 
 <div id="searchbox" style="display: none" role="search">
@@ -415,7 +410,7 @@ auc
       &copy;2022, Keri Sime.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 5.0.1</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 5.0.2</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

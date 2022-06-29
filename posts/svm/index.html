@@ -60,8 +60,6 @@
           <div class="body" role="main">
              <section id="support-vector-machines">
 <h1>Support Vector Machines<a class="headerlink" href="#support-vector-machines" title="Permalink to this heading">¶</a></h1>
-<section id="theory">
-<h2>Theory<a class="headerlink" href="#theory" title="Permalink to this heading">¶</a></h2>
 <p>The support vector machine (SVM) is a classification method which groups
 similar individuals into classes depending on their characteristics.</p>
 <p>The example below left shows 10 individuals classed either as positive (+)
@@ -115,7 +113,7 @@ overall performance is fast. The algorithm also uses a heuristic to
 choose which multipliers to optimize at each step in order to increase
 efficiency.</p>
 <section id="advantages-and-disadvantages">
-<h3>Advantages and Disadvantages<a class="headerlink" href="#advantages-and-disadvantages" title="Permalink to this heading">¶</a></h3>
+<h2>Advantages and Disadvantages<a class="headerlink" href="#advantages-and-disadvantages" title="Permalink to this heading">¶</a></h2>
 <p>The SVM works well on a wide range of problems. It is robust to noise
 since it only considers the individuals closest to the maximum margin
 separator. This makes it is less prone to overfitting a model. It also
@@ -132,14 +130,14 @@ is not necessarily as simple as it first seems since the choice of
 kernel depends on the data set. Furthermore, key parameters need to be
 set correctly meaning that several models may need to be tested before
 finding a satisfactory model.</p>
-</section>
-</section>
 <section id="code">
-<h2>Code<a class="headerlink" href="#code" title="Permalink to this heading">¶</a></h2>
+<h3>Code<a class="headerlink" href="#code" title="Permalink to this heading">¶</a></h3>
 <p>For a basic introduction into SVM in R we’ll use the classic Fisher’s
 Iris data. To get some background on this data set use <em>?iris</em>.</p>
+</section>
+</section>
 <section id="data-visualisation">
-<h3>1. Data Visualisation<a class="headerlink" href="#data-visualisation" title="Permalink to this heading">¶</a></h3>
+<h2>1. Data Visualisation<a class="headerlink" href="#data-visualisation" title="Permalink to this heading">¶</a></h2>
 <p>Let’s start by looking at the data so that we know what we’re working
 with. This code plots the classes <em>setosa</em>, <em>versicolor</em> and <em>virginica</em>
 for each variable combination.</p>
@@ -181,7 +179,7 @@ function to implicity map the observations into a high dimension.
 Luckily for us, this is done automatically.</p>
 </section>
 <section id="classification">
-<h3>2. Classification<a class="headerlink" href="#classification" title="Permalink to this heading">¶</a></h3>
+<h2>2. Classification<a class="headerlink" href="#classification" title="Permalink to this heading">¶</a></h2>
 <p>Firstly let’s build a test and data training set before training the
 classfier. Here, we’ll use the package <em>kernlab</em> but the package <em>e1071</em>
 also has an SVM function. The advantage of <em>kernlab</em> is the choice of
@@ -225,7 +223,7 @@ scaling functions. The output of <em>predict()</em> accounts for scaling and
 returns the unscaled predictions.</p>
 </section>
 <section id="validation">
-<h3>3. Validation<a class="headerlink" href="#validation" title="Permalink to this heading">¶</a></h3>
+<h2>3. Validation<a class="headerlink" href="#validation" title="Permalink to this heading">¶</a></h2>
 <p>This code displays the confusion matrix and calculates the predication
 accuray which allows the classification quality to be evaluated.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1">#Display the confusion matrix</span>
@@ -273,7 +271,7 @@ vector markers are coloured black in the graph.</p>
 <a class="reference internal image-reference" href="../../_images/svmPlot2.png"><img alt="../../_images/svmPlot2.png" src="../../_images/svmPlot2.png" style="width: 600px;" /></a>
 </section>
 <section id="tuning">
-<h3>4. Tuning<a class="headerlink" href="#tuning" title="Permalink to this heading">¶</a></h3>
+<h2>4. Tuning<a class="headerlink" href="#tuning" title="Permalink to this heading">¶</a></h2>
 <p>How did I know I would get a better result by adding the kernel
 parameter of sigma=0.05? By trial and error! This is not a very time
 effective method and so a package for tuning models from the kernlab
@@ -361,11 +359,9 @@ said, my results fell in the dark blue section of the graph and
 generally returned low values of sigma (&lt;1).</p>
 </section>
 </section>
-</section>
 
 <div class="section">
-    
-
+     
 <div class="section">
   <span style="float: left">
     
@@ -426,6 +422,12 @@ generally returned low values of sigma (&lt;1).</p>
 <ul>
    
   <li>
+    <a href="../buildAblogSite/"
+      >06 June - Using Python to Build a Github Hosted Blog</a
+    >
+  </li>
+  
+  <li>
     <a href="../spatialDemo/"
       >25 April - Spatial Demo</a
     >
@@ -449,12 +451,6 @@ generally returned low values of sigma (&lt;1).</p>
     >
   </li>
   
-  <li>
-    <a href="../projMgmnt/"
-      >15 April - Managing a Machine Learning Project</a
-    >
-  </li>
-  
 </ul>
 
 <div id="searchbox" style="display: none" role="search">
@@ -475,7 +471,7 @@ generally returned low values of sigma (&lt;1).</p>
       &copy;2022, Keri Sime.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 5.0.1</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 5.0.2</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

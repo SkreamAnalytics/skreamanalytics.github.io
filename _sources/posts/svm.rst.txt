@@ -5,9 +5,6 @@
 Support Vector Machines
 =======================
 
-Theory
-------
-
 The support vector machine (SVM) is a classification method which groups
 similar individuals into classes depending on their characteristics. 
 

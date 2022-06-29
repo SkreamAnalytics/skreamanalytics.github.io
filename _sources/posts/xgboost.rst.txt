@@ -173,8 +173,7 @@ cross-validation.
 
 In hand tuning a few models, I found that the model preformed really
 well on the training dataset but less well on the test dataset. To
-handle this overfitting, the [tuning recommendations]
-(https://xgboost.readthedocs.io/en/latest/tutorials/param_tuning.html)
+handle this overfitting, the `tuning recommendations <https://xgboost.readthedocs.io/en/latest/tutorials/param_tuning.html>`__
 suggest adjusting the *max depth*, *min child weight* and *gamma*
 parameters.
 `Gamma <https://xgboost.readthedocs.io/en/latest/python/python_api.html>`__
